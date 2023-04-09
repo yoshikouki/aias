@@ -1,9 +1,9 @@
 import openai
-import os
 
-openai.api_key = os.getenv("OPENAI_API_KEY")
+from src.config import AiasConfig
 
-def chat_with_gpt(input_text):
+def chat_with_gpt(aias_config, input_text):
+    openai.api_key = aias_config.config["api"]["key"]
     response = openai.ChatCompletion.create(
         model="gpt-3.5-turbo",
         messages=[
@@ -15,6 +15,7 @@ def chat_with_gpt(input_text):
     return response.choices[0].message.content.strip()
 
 if __name__ == "__main__":
+    aias_config = AiasConfig()
     input_text = input("あなた: ")
-    response = chat_with_gpt(input_text)
+    response = chat_with_gpt(aias_config, input_text)
     print("ChatGPT:", response)
