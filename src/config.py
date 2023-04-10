@@ -23,3 +23,6 @@ class AiasConfig:
         self.create_config_file()
         with open(self.config_file, "r") as f:
             return yaml.safe_load(f)
+
+    def get_openai_api_key(self):
+        return self.config["api"]["key"]

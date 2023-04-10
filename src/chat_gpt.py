@@ -2,7 +2,7 @@ import openai
 from src.config import AiasConfig
 
 aias_config = AiasConfig()
-openai.api_key = aias_config.config["api"]["key"]
+openai.api_key = aias_config.get_openai_api_key()
 
 def chat_with_gpt(input_text):
     response = openai.ChatCompletion.create(
