@@ -20,7 +20,6 @@ class AiasConfig:
             with open(self.config_file, "w") as f:
                 yaml.safe_dump(initial_config, f)
             print(f"A config file has been created in {self.config_file}")
-            exit()
 
     def update_api_key(self, api_key):
         self.config["api"]["key"] = api_key

@@ -3,5 +3,5 @@
 ## Installation
 
 ```sh
-$ curl -sSL https://raw.githubusercontent.com/yourusername/yourrepository/main/bin/install | sh
+$ curl -sSL https://raw.githubusercontent.com/yoshikouki/aias/main/bin/install | sh
 ```
