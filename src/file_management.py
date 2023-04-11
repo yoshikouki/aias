@@ -4,7 +4,7 @@ import re
 
 
 def generate_code_blocks(directory="."):
-    code_blocks = ["# Code block section:", ""]
+    code_blocks = []
     for root, _, files in os.walk(directory):
         for file in files:
             if file.endswith(".py"):

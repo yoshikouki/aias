@@ -18,7 +18,12 @@ if __name__ == "__main__":
     if args.reindex:
         tree_structure = generate_tree_structure()
         code_blocks = generate_code_blocks()
-        print(tree_structure, code_blocks, sep="\n\n-----------------\n\n")
+        print(
+            "# Tree structure section:",
+            tree_structure,
+            "-----------------",
+            "# Code block section:",
+            code_blocks, sep="\n\n")
     else:
         input_text = input("あなた: ")
         response = chat_with_gpt(input_text)
