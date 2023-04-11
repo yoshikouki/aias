@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import argparse
 from src.chat_gpt import chat_with_gpt
 from src.file_management import generate_code_blocks, generate_tree_structure

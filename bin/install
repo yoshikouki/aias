@@ -1,0 +1,43 @@
+#!/bin/sh
+
+REPO_URL="https://github.com/yoshikouki/aias.git"
+TARGET_DIR="$HOME/.aias"
+BIN_DIR="$HOME/.local/bin"
+
+if ! command -v git >/dev/null 2>&1; then
+    echo "❌ Error: git is not installed."
+    exit 1
+fi
+
+if ! command -v python3 >/dev/null 2>&1; then
+    echo "❌ Error: python3 is not installed."
+    exit 1
+fi
+
+if [ -d "$TARGET_DIR/.git" ]; then
+  echo "Aias is already installed at $TARGET_DIR, updating instead..."
+  cd "$TARGET_DIR"
+  git fetch
+  git reset --hard origin/main
+elif [ -d "$TARGET_DIR" ]; then
+  echo "Directory already exists at $TARGET_DIR, updating instead..."
+  rm -rf "$TARGET_DIR"
+  git clone "$REPO_URL" "$TARGET_DIR"
+  cd "$TARGET_DIR"
+  git checkout main
+else
+  echo "Cloning Aias from $REPO_URL to $TARGET_DIR ..."
+  git clone "$REPO_URL" "$TARGET_DIR"
+  cd "$TARGET_DIR"
+  git checkout main
+fi
+
+if [ -e "$TARGET_DIR/aias.py" ]; then
+    chmod +x "$TARGET_DIR/aias.py"
+    mkdir -p "$BIN_DIR"
+    ln -sf "$TARGET_DIR/aias.py" "$BIN_DIR/aias"
+    echo "🎉 Aias installed successfully!"
+else
+    echo "❌ Error: Aias installation failed."
+    exit 1
+fi
