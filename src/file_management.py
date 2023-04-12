@@ -23,6 +23,17 @@ def generate_code_blocks(directory="."):
     return "\n".join(code_blocks)
 
 
+def save_code_blocks(code_blocks=None, file_path="./data/code_blocks.md"):
+    if code_blocks is None:
+        code_blocks = generate_code_blocks()
+    if not os.path.exists("./data"):
+        os.makedirs("./data")
+
+    with open(file_path, "w") as f:
+        f.write(code_blocks)
+    return code_blocks, file_path
+
+
 def parse_gitignore(ignore_file='.gitignore'):
     with open(ignore_file, 'r') as f:
         lines = f.readlines()
@@ -70,3 +81,14 @@ def generate_tree_structure(directory='.', gitignore='.gitignore'):
             tree.append(f"{indent}{file}")
 
     return '\n'.join(tree)
+
+
+def save_tree_structure(tree_structure=None, file_path="./data/tree_structure.md"):
+    if tree_structure is None:
+        tree_structure = generate_tree_structure()
+    if not os.path.exists("./data"):
+        os.makedirs("./data")
+
+    with open(file_path, "w") as f:
+        f.write(tree_structure)
+    return tree_structure, file_path
