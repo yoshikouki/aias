@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import argparse
+import readline
 from src.chat_gpt import chat_with_gpt
 from src.file_management import load_code_blocks, load_tree_structure, save_code_blocks, save_tree_structure
 
@@ -35,6 +36,18 @@ if __name__ == "__main__":
         print(f"{tree_structure}\n\n-----------------\n\n{code_blocks}")
 
     else:
-        input_text = input("あなた: ")
-        response = chat_with_gpt(input_text)
+        print("Enter message and press Ctrl+D to confirm... (Ctrl+C to exit)")
+        print("---------------------------------------------------------------")
+        input_texts = []
+        while True:
+            try:
+                line = input()
+            except EOFError:
+                break
+            input_texts.append(line)
+        print("---------------------------------------------------------------")
+        print("\nPlease wait...")
+
+        response, tokens = chat_with_gpt("\n".join(input_texts))
         print("ChatGPT:", response)
+        print("tokens:", tokens)
