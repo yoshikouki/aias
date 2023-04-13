@@ -1,9 +1,15 @@
 #!/usr/bin/env python3
 
 import argparse
-import readline
+import readline  # noqa: F401
 from src.chat_gpt import chat_with_gpt
-from src.file_management import load_code_blocks, load_tree_structure, save_code_blocks, save_tree_structure
+from src.file_management import (
+    load_code_blocks,
+    load_tree_structure,
+    save_code_blocks,
+    save_tree_structure,
+)
+
 
 def reindex():
     tree_structure, tree_structure_file_path = save_tree_structure()

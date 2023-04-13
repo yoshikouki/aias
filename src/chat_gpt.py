@@ -23,7 +23,7 @@ def chat_with_gpt(input_text, tree_structure=None, code_blocks=None):
     response = openai.ChatCompletion.create(
         model="gpt-3.5-turbo",
         messages=[
-            {"role": "system", "content": "You are a talented engineer. Let's work together to create a product based on the product information we are about to show you."},
+            {"role": "system", "content": "You are a talented engineer. Let's work together to create a product based on the product information we are about to show you."},  # noqa: E501
             {"role": "system", "content": "The code should be output in exact git diff format."},
             {"role": "system", "content": "Please reply in Japanese."},
             {"role": "user", "content": "\n".join([
