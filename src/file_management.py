@@ -34,6 +34,13 @@ def save_code_blocks(code_blocks=None, file_path="./data/code_blocks.md"):
     return code_blocks, file_path
 
 
+def load_code_blocks(file_path="./data/code_blocks.md"):
+    if not os.path.exists(file_path):
+        save_code_blocks()
+    with open(file_path, "r") as f:
+        return f.read()
+
+
 def parse_gitignore(ignore_file='.gitignore'):
     with open(ignore_file, 'r') as f:
         lines = f.readlines()
@@ -92,3 +99,10 @@ def save_tree_structure(tree_structure=None, file_path="./data/tree_structure.md
     with open(file_path, "w") as f:
         f.write(tree_structure)
     return tree_structure, file_path
+
+
+def load_tree_structure(file_path="./data/tree_structure.md"):
+    if not os.path.exists(file_path):
+        save_tree_structure()
+    with open(file_path, "r") as f:
+        return f.read()
