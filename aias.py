@@ -2,12 +2,13 @@
 
 import argparse
 from src.chat_gpt import chat_with_gpt
-from src.file_management import generate_code_blocks, generate_tree_structure, save_code_blocks, save_tree_structure
+from src.file_management import load_code_blocks, load_tree_structure, save_code_blocks, save_tree_structure
 
 def reindex():
     tree_structure, tree_structure_file_path = save_tree_structure()
     code_blocks, code_blocks_file_path = save_code_blocks()
     return tree_structure, tree_structure_file_path, code_blocks, code_blocks_file_path
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
@@ -24,13 +25,14 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    if args.reindex and args.output:
-      tree_structure, _, code_blocks, _ = reindex()
-      print(f"{tree_structure}\n\n-----------------\n\n{code_blocks}")
-
-    elif args.reindex:
+    if args.reindex:
         _, tree_structure_file_path, _, code_blocks_file_path = reindex()
-        print(f"Code blocks and tree structure have been saved to {tree_structure_file_path} and {code_blocks_file_path} respectively.")
+        print(f"ℹ️ Saved to {tree_structure_file_path} and {code_blocks_file_path} respectively.\n")
+
+    if args.output:
+        tree_structure = load_tree_structure()
+        code_blocks = load_code_blocks()
+        print(f"{tree_structure}\n\n-----------------\n\n{code_blocks}")
 
     else:
         input_text = input("あなた: ")
