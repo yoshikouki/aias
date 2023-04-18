@@ -13,14 +13,16 @@ openai.api_key = aias_config.get_openai_api_key()
 logger = logging.getLogger("ChatGPT")
 
 logging.basicConfig(
-    level=logging.INFO, format="", handlers=[logging.FileHandler("./data/chat.log")]
+    level=logging.INFO,
+    format="",
+    handlers=[logging.FileHandler("./data/chat.log", encoding="utf-8")],
 )
 
 
 def chat_with_gpt(input_text, tree_structure=None, code_blocks=None):
-    if tree_structure is None:
+    if not tree_structure:
         tree_structure = load_tree_structure()
-    if code_blocks is None:
+    if not code_blocks:
         code_blocks = load_code_blocks()
 
     product_name = "aias"
@@ -54,6 +56,7 @@ def chat_with_gpt(input_text, tree_structure=None, code_blocks=None):
         ```
         """  # noqa: E501
     )
+
     response = openai.ChatCompletion.create(
         model="gpt-3.5-turbo",
         messages=[
@@ -66,7 +69,7 @@ def chat_with_gpt(input_text, tree_structure=None, code_blocks=None):
                         tree_structure,
                         "# The codes of our project:",
                         code_blocks,
-                        "# Outputs Diff:"
+                        "# Outputs Diff:",
                     ]
                 ),
             },
@@ -81,6 +84,6 @@ def chat_with_gpt(input_text, tree_structure=None, code_blocks=None):
         {"role": "user", "content": input_text},
         message,
     ]
-    logger.info("\n".join([json.dumps(data) for data in log_dict]))
+    logger.info("\n".join([json.dumps(data, ensure_ascii=False) for data in log_dict]))
 
     return message.content.strip(), tokens
