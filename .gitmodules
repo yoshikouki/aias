@@ -4,3 +4,6 @@
 [submodule "ref/mastra"]
 	path = ref/mastra
 	url = https://github.com/mastra-ai/mastra.git
+[submodule "ref/ai"]
+	path = ref/ai
+	url = https://github.com/vercel/ai.git
