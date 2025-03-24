@@ -7,13 +7,13 @@
   },
   "files": {
     "ignoreUnknown": false,
-    "ignore": []
+    "ignore": ["ref/**"]
   },
   "formatter": {
     "enabled": true,
     "indentStyle": "space",
     "lineWidth": 96,
-    "ignore": []
+    "ignore": ["ref/**"]
   },
   "organizeImports": {
     "enabled": true
