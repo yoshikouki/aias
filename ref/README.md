@@ -2,20 +2,11 @@
 
 This directory contains reference materials and external repositories used in this project.
 
-## Bun Documentation
+## Documentation
 
-The Bun documentation can be found in the `bun/docs` directory. This is a submodule of the official [Bun repository](https://github.com/oven-sh/bun).
+| Project | Repository | Documentation Path | Description |
+|---------|------------|-------------------|-------------|
+| Bun | [oven-sh/bun](https://github.com/oven-sh/bun) | `bun/docs` | JavaScript runtime, bundler, test runner, and package manager |
+| Mastra | [mastra-ai/mastra](https://github.com/mastra-ai/mastra) | `mastra/docs` | TypeScript AI agent framework with assistants, RAG, and observability |
 
-To access the documentation:
-1. Navigate to `bun/docs`
-2. The documentation is written in Markdown format
-3. You can view it directly in your text editor or through a Markdown viewer
-
-## Mastra Documentation
-
-The Mastra documentation can be found in the `mastra/docs` directory. This is a submodule of the official [Mastra repository](https://github.com/mastra-ai/mastra).
-
-To access the documentation:
-1. Navigate to `mastra/docs`
-2. The documentation is written in Markdown format
-3. You can view it directly in your text editor or through a Markdown viewer 
+All documentation is written in Markdown format and can be viewed directly in your text editor or through a Markdown viewer 
