@@ -1,25 +1,25 @@
 {
-	"name": "aias",
-	"module": "index.ts",
-	"type": "module",
-	"private": true,
-	"scripts": {
-		"start": "bun run src/index.ts",
-		"lint": "biome check .",
-		"format": "biome check --write .",
-		"format:unsafe": "biome check --write --unsafe .",
-		"test": "bun test",
-		"update:all": "bun update --latest"
-	},
-	"dependencies": {
-		"@anthropic-ai/sdk": "^0.39.0",
-		"ai": "^4.2.1"
-	},
-	"devDependencies": {
-		"@biomejs/biome": "1.9.4",
-		"@types/bun": "latest"
-	},
-	"peerDependencies": {
-		"typescript": "^5"
-	}
+  "name": "aias",
+  "module": "src/index.ts",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "start": "bun run src/index.ts",
+    "lint": "biome check .",
+    "format": "biome check --write .",
+    "format:unsafe": "biome check --write --unsafe .",
+    "test": "bun test",
+    "update:all": "bun update --latest"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.39.0",
+    "ai": "^4.2.1"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "1.9.4",
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  }
 }

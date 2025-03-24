@@ -1,5 +1,5 @@
-import Anthropic from '@anthropic-ai/sdk';
-import { parseAndExecuteTool } from './parser';
+import Anthropic from "@anthropic-ai/sdk";
+import { parseAndExecuteTool } from "./parser";
 
 const systemPrompt = `You are a coding agent. Use the following tools to complete tasks:
 
@@ -48,7 +48,7 @@ Always use one of the above tools. Do not respond directly without using a tool.
 
 export class CodingAgent {
   private anthropic: Anthropic;
-  private messages: { role: 'user' | 'assistant'; content: string }[] = [];
+  private messages: { role: "user" | "assistant"; content: string }[] = [];
 
   constructor(apiKey: string) {
     this.anthropic = new Anthropic({ apiKey });
@@ -56,30 +56,31 @@ export class CodingAgent {
 
   async start(task: string) {
     this.messages = [
-      { role: 'assistant', content: systemPrompt },
-      { role: 'user', content: task },
+      { role: "assistant", content: systemPrompt },
+      { role: "user", content: task },
     ];
 
     let isComplete = false;
     while (!isComplete) {
       const response = await this.anthropic.messages.create({
-        model: 'claude-3-7-sonnet-20250219',
+        model: "claude-3-7-sonnet-20250219",
         max_tokens: 4096,
         messages: this.messages,
         temperature: 0.7,
       });
 
       const assistantResponse = response.content[0].text;
-      this.messages.push({ role: 'assistant', content: assistantResponse });
+      this.messages.push({ role: "assistant", content: assistantResponse });
 
-      const { response: toolResponse, isComplete: complete } = await parseAndExecuteTool(assistantResponse);
-      
+      const { response: toolResponse, isComplete: complete } =
+        await parseAndExecuteTool(assistantResponse);
+
       if (toolResponse.success) {
         console.log(`\n[${toolResponse.message}]`);
       }
 
-      this.messages.push({ role: 'user', content: `[Tool Result] ${toolResponse.message}` });
+      this.messages.push({ role: "user", content: `[Tool Result] ${toolResponse.message}` });
       isComplete = complete;
     }
   }
-} 
+}

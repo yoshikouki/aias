@@ -31,14 +31,20 @@ export interface CompleteParams {
 }
 
 export type ToolType =
-  | 'list_file'
-  | 'read_file'
-  | 'write_file'
-  | 'ask_question'
-  | 'execute_command'
-  | 'complete';
+  | "list_file"
+  | "read_file"
+  | "write_file"
+  | "ask_question"
+  | "execute_command"
+  | "complete";
 
 export interface Tool {
   type: ToolType;
-  params: ListFileParams | ReadFileParams | WriteFileParams | AskQuestionParams | ExecuteCommandParams | CompleteParams;
-} 
+  params:
+    | ListFileParams
+    | ReadFileParams
+    | WriteFileParams
+    | AskQuestionParams
+    | ExecuteCommandParams
+    | CompleteParams;
+}
