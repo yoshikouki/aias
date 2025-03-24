@@ -1,3 +1,6 @@
 [submodule "ref/bun"]
 	path = ref/bun
 	url = https://github.com/oven-sh/bun.git
+[submodule "ref/mastra"]
+	path = ref/mastra
+	url = https://github.com/mastra-ai/mastra.git
