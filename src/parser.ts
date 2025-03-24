@@ -1,5 +1,15 @@
 import * as tools from "./tools";
-import type { Tool, ToolResponse, ToolType } from "./types";
+import type {
+  AskQuestionParams,
+  CompleteParams,
+  ExecuteCommandParams,
+  ListFileParams,
+  ReadFileParams,
+  Tool,
+  ToolResponse,
+  ToolType,
+  WriteFileParams,
+} from "./types";
 
 export async function parseAndExecuteTool(
   response: string,
@@ -34,7 +44,17 @@ export async function parseAndExecuteTool(
   };
 }
 
-function parseParams(toolType: ToolType, content: string): any {
+function parseParams(
+  toolType: ToolType,
+  content: string,
+):
+  | ListFileParams
+  | ReadFileParams
+  | WriteFileParams
+  | AskQuestionParams
+  | ExecuteCommandParams
+  | CompleteParams
+  | null {
   try {
     switch (toolType) {
       case "list_file": {
@@ -97,17 +117,17 @@ function parseParams(toolType: ToolType, content: string): any {
 async function executeTool(tool: Tool): Promise<ToolResponse> {
   switch (tool.type) {
     case "list_file":
-      return tools.listFile(tool.params as any);
+      return tools.listFile(tool.params as ListFileParams);
     case "read_file":
-      return tools.readFile(tool.params as any);
+      return tools.readFile(tool.params as ReadFileParams);
     case "write_file":
-      return tools.writeFile(tool.params as any);
+      return tools.writeFile(tool.params as WriteFileParams);
     case "ask_question":
-      return tools.askQuestion(tool.params as any);
+      return tools.askQuestion(tool.params as AskQuestionParams);
     case "execute_command":
-      return tools.executeCommand(tool.params as any);
+      return tools.executeCommand(tool.params as ExecuteCommandParams);
     case "complete":
-      return tools.complete(tool.params as any);
+      return tools.complete(tool.params as CompleteParams);
     default:
       return { success: false, message: `Unknown tool type: ${tool.type}` };
   }
