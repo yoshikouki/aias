@@ -1,6 +1,7 @@
 import { exec } from "node:child_process";
 import { promises as fs } from "node:fs";
 import { promisify } from "node:util";
+import { logger } from "./lib/logger";
 import { failure, success } from "./lib/result";
 import type {
   AskQuestionParams,
@@ -84,7 +85,7 @@ export async function writeFile(params: WriteFileParams): Promise<ToolResult> {
  */
 export async function askQuestion(params: AskQuestionParams): Promise<ToolResult> {
   try {
-    console.log(`\nQuestion: ${params.question}`);
+    logger.log(`\nQuestion: ${params.question}`);
     const answer = await new Promise<string>((resolve) => {
       process.stdin.once("data", (data) => resolve(data.toString().trim()));
     });
@@ -104,7 +105,7 @@ export async function askQuestion(params: AskQuestionParams): Promise<ToolResult
 export async function executeCommand(params: ExecuteCommandParams): Promise<ToolResult> {
   try {
     if (params.requiresApproval) {
-      console.log(`\nExecute command?\n${params.command}\n[y/n]: `);
+      logger.log(`\nExecute command?\n${params.command}\n[y/n]: `);
       const answer = await new Promise<string>((resolve) => {
         process.stdin.once("data", (data) => resolve(data.toString().trim()));
       });

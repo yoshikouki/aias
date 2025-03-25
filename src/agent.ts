@@ -1,6 +1,7 @@
 import { createAnthropic } from "@ai-sdk/anthropic";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { generateText } from "ai";
+import { logger } from "./lib/logger";
 import { parseAndExecuteTool } from "./parser";
 import type { ToolResult } from "./types";
 
@@ -158,9 +159,9 @@ export class CodingAgent {
    */
   private displayToolResult(result: ToolResult): void {
     if (result.ok) {
-      console.log(`\n[${result.result}]`);
+      logger.log(`\n[${result.result}]`);
     } else {
-      console.error(`\n[Error: ${result.error.message}]`);
+      logger.error(`\n[Error: ${result.error.message}]`);
     }
   }
 

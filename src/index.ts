@@ -1,15 +1,16 @@
 import { CodingAgent } from "./agent";
+import { logger } from "./lib/logger";
 
 async function main() {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
-    console.error("GEMINI_API_KEY environment variable is not set");
+    logger.error("GEMINI_API_KEY environment variable is not set");
     process.exit(1);
   }
 
   const agent = CodingAgent.fromGoogleApiKey(apiKey);
 
-  console.log("Enter your task:");
+  logger.log("Enter your task:");
   const task = await new Promise<string>((resolve) => {
     process.stdin.once("data", (data) => resolve(data.toString().trim()));
   });
@@ -17,7 +18,7 @@ async function main() {
   try {
     await agent.start(task);
   } catch (error) {
-    console.error("Error:", error instanceof Error ? error.message : String(error));
+    logger.error("Error:", error);
     process.exit(1);
   }
 }
