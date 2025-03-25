@@ -9,11 +9,10 @@ export interface Logger {
 /**
  * デフォルトのコンソールロガー実装
  */
-export class ConsoleLogger implements Logger {
+export const createConsoleLogger = (): Logger => ({
   log(message: string): void {
     console.log(message);
-  }
-
+  },
   error(message: string, error?: unknown): void {
     if (error) {
       console.error(message, error instanceof Error ? error.message : String(error));
@@ -21,22 +20,38 @@ export class ConsoleLogger implements Logger {
       console.error(message);
     }
   }
-}
+});
 
 /**
  * テスト用のサイレントロガー実装
  */
-export class SilentLogger implements Logger {
+export const createSilentLogger = (): Logger => ({
   log(_message: string): void {
     // ログ出力しない
-  }
-
+  },
   error(_message: string, _error?: unknown): void {
     // エラーログ出力しない
   }
-}
+});
 
 /**
- * デフォルトロガーのシングルトンインスタンス
+ * テスト用のインメモリロガー実装
  */
-export const logger: Logger = new ConsoleLogger();
+export const createInMemoryLogger = (): Logger & { messages: string[], errors: Array<{ message: string, error?: unknown }> } => {
+  const messages: string[] = [];
+  const errors: Array<{ message: string, error?: unknown }> = [];
+  
+  return {
+    messages,
+    errors,
+    log(message: string): void {
+      messages.push(message);
+    },
+    error(message: string, error?: unknown): void {
+      errors.push({ message, error });
+    }
+  };
+};
+
+// デフォルトのロガーをエクスポート
+export const logger = createConsoleLogger();

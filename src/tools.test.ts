@@ -1,15 +1,10 @@
 import { exec } from "node:child_process";
 import { promises as fs } from "node:fs";
 import type { Dirent } from "node:fs";
-import { beforeEach, describe, expect, test, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
+import * as loggerModule from "./lib/logger";
+import { createMockLogger } from "./lib/test-utils";
 import * as tools from "./tools";
-
-// モック用の型定義
-type MockStdin = {
-  once: (event: string, callback: (data: Buffer) => void) => MockStdin;
-};
-
-type ExecCallback = (error: Error | null, result: { stdout: string; stderr: string }) => void;
 
 // fs.readdir, fs.readFile, fs.writeFileのモック
 vi.mock("node:fs", () => ({
@@ -21,16 +16,52 @@ vi.mock("node:fs", () => ({
 }));
 
 // exec関数のモック
-vi.mock("node:child_process", () => ({
-  exec: vi.fn(),
-}));
+vi.mock("node:child_process", () => {
+  return {
+    exec: vi.fn().mockImplementation((cmd, options, callback) => {
+      // 3番目の引数がコールバックの場合
+      if (typeof callback === "function") {
+        callback(null, { stdout: "mocked stdout", stderr: "" });
+      }
+      // 2番目の引数がコールバックの場合
+      else if (typeof options === "function") {
+        options(null, { stdout: "mocked stdout", stderr: "" });
+      }
+      return {} as any;
+    }),
+  };
+});
+
+// logger モジュールのモック
+vi.mock("./lib/logger", () => {
+  const mockLogger = {
+    log: vi.fn(),
+    error: vi.fn(),
+  };
+  return {
+    logger: mockLogger,
+    createConsoleLogger: vi.fn().mockReturnValue(mockLogger),
+    createSilentLogger: vi.fn().mockReturnValue(mockLogger),
+    createInMemoryLogger: vi.fn().mockReturnValue(mockLogger),
+  };
+});
 
 describe("tools", () => {
+  let mockLogger: ReturnType<typeof createMockLogger>;
+
   beforeEach(() => {
     vi.resetAllMocks();
-    // コンソール出力をスパイ
-    vi.spyOn(console, "log").mockImplementation(() => {});
-    vi.spyOn(console, "error").mockImplementation(() => {});
+    // モックロガーを作成
+    mockLogger = createMockLogger();
+    // loggerモジュールのloggerをモックロガーで上書き
+    Object.defineProperty(loggerModule, "logger", {
+      value: mockLogger,
+      writable: true,
+    });
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   describe("listFile", () => {
@@ -70,7 +101,7 @@ describe("tools", () => {
   describe("readFile", () => {
     test("正常にファイル内容を読み込める場合", async () => {
       // モックの戻り値を設定
-      vi.mocked(fs.readFile).mockResolvedValue("file content" as any);
+      vi.mocked(fs.readFile).mockResolvedValue("file content" as unknown as Buffer);
 
       const result = await tools.readFile({ path: "test.txt" });
 
@@ -136,7 +167,7 @@ describe("tools", () => {
       // process.stdin.onceをスパイして、コールバックを直接実行
       const onceSpy = vi
         .spyOn(process.stdin, "once")
-        .mockImplementation((event, callback: any) => {
+        .mockImplementation((event: string, callback: (data: Buffer) => void) => {
           callback(Buffer.from("user answer"));
           return process.stdin;
         });
@@ -147,7 +178,8 @@ describe("tools", () => {
       if (result.ok) {
         expect(result.result).toBe("User answered: user answer");
       }
-      expect(console.log).toHaveBeenCalledWith(expect.stringContaining("What is your name?"));
+      // ロガーにメッセージが記録されていることを確認
+      expect(mockLogger.logs).toContainEqual(expect.stringContaining("What is your name?"));
       expect(onceSpy).toHaveBeenCalledWith("data", expect.any(Function));
 
       onceSpy.mockRestore();
@@ -159,17 +191,18 @@ describe("tools", () => {
       // process.stdin.onceをスパイ
       const onceSpy = vi
         .spyOn(process.stdin, "once")
-        .mockImplementation((event, callback: any) => {
+        .mockImplementation((event: string, callback: (data: Buffer) => void) => {
           callback(Buffer.from("y"));
           return process.stdin;
         });
 
-      // execをスタブ化
-      vi.mocked(exec).mockImplementation((cmd: string, options: any, callback?: any) => {
+      // execをスタブ化して特定の戻り値を設定
+      vi.mocked(exec).mockImplementation((...args: any[]) => {
+        // コールバックが渡されている場合、それを実行
+        const callback =
+          args.length === 3 ? args[2] : typeof args[1] === "function" ? args[1] : null;
         if (callback) {
           callback(null, { stdout: "command output", stderr: "" });
-        } else if (typeof options === "function") {
-          options(null, { stdout: "command output", stderr: "" });
         }
         return {} as any;
       });
@@ -183,7 +216,8 @@ describe("tools", () => {
       if (result.ok) {
         expect(result.result).toContain("command output");
       }
-      expect(console.log).toHaveBeenCalledWith(expect.stringContaining("Execute command?"));
+      // ロガーにメッセージが記録されていることを確認
+      expect(mockLogger.logs).toContainEqual(expect.stringContaining("Execute command?"));
       expect(onceSpy).toHaveBeenCalledWith("data", expect.any(Function));
 
       onceSpy.mockRestore();
@@ -193,7 +227,7 @@ describe("tools", () => {
       // process.stdin.onceをスパイ
       const onceSpy = vi
         .spyOn(process.stdin, "once")
-        .mockImplementation((event, callback: any) => {
+        .mockImplementation((event: string, callback: (data: Buffer) => void) => {
           callback(Buffer.from("n"));
           return process.stdin;
         });
@@ -214,12 +248,13 @@ describe("tools", () => {
     });
 
     test("承認が不要な場合は直接実行される", async () => {
-      // execをスタブ化
-      vi.mocked(exec).mockImplementation((cmd: string, options: any, callback?: any) => {
+      // execをスタブ化して特定の戻り値を設定
+      vi.mocked(exec).mockImplementation((...args: any[]) => {
+        // コールバックが渡されている場合、それを実行
+        const callback =
+          args.length === 3 ? args[2] : typeof args[1] === "function" ? args[1] : null;
         if (callback) {
           callback(null, { stdout: "command result", stderr: "" });
-        } else if (typeof options === "function") {
-          options(null, { stdout: "command result", stderr: "" });
         }
         return {} as any;
       });
@@ -234,16 +269,17 @@ describe("tools", () => {
         expect(result.result).toContain("command result");
       }
       // 承認プロンプトが表示されていないことを確認
-      expect(console.log).not.toHaveBeenCalledWith(expect.stringContaining("Execute command?"));
+      expect(mockLogger.logs).not.toContainEqual(expect.stringContaining("Execute command?"));
     });
 
     test("コマンド実行でエラーが発生した場合", async () => {
-      // execをスタブ化
-      vi.mocked(exec).mockImplementation((cmd: string, options: any, callback?: any) => {
+      // execをスタブ化してエラーを返すように設定
+      vi.mocked(exec).mockImplementation((...args: any[]) => {
+        // コールバックが渡されている場合、それを実行
+        const callback =
+          args.length === 3 ? args[2] : typeof args[1] === "function" ? args[1] : null;
         if (callback) {
           callback(new Error("Command failed"), { stdout: "", stderr: "error output" });
-        } else if (typeof options === "function") {
-          options(new Error("Command failed"), { stdout: "", stderr: "error output" });
         }
         return {} as any;
       });

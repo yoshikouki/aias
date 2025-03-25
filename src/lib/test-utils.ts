@@ -1,51 +1,45 @@
-import { SilentLogger } from "./logger";
+import { createSilentLogger, createInMemoryLogger } from "./logger";
 import type { Logger } from "./logger";
 
 /**
- * テスト用にロガーをモックするクラス
+ * テスト用にロガーをモックするユーティリティ
  */
-export class MockLogger implements Logger {
-  public logs: string[] = [];
-  public errors: string[] = [];
+export const createMockLogger = (): Logger & { logs: string[], errors: string[], clear: () => void } => {
+  const logs: string[] = [];
+  const errors: string[] = [];
 
-  log(message: string): void {
-    this.logs.push(message);
-  }
-
-  error(message: string, error?: unknown): void {
-    if (error) {
-      this.errors.push(`${message} ${error instanceof Error ? error.message : String(error)}`);
-    } else {
-      this.errors.push(message);
+  return {
+    logs,
+    errors,
+    log(message: string): void {
+      logs.push(message);
+    },
+    error(message: string, error?: unknown): void {
+      if (error) {
+        errors.push(`${message} ${error instanceof Error ? error.message : String(error)}`);
+      } else {
+        errors.push(message);
+      }
+    },
+    clear(): void {
+      logs.length = 0;
+      errors.length = 0;
     }
-  }
+  };
+};
 
-  clear(): void {
-    this.logs = [];
-    this.errors = [];
-  }
+/**
+ * テスト用のロガーを取得する
+ * @returns テスト用のモックロガー
+ */
+export function getTestLogger(): Logger {
+  return createSilentLogger();
 }
 
 /**
- * テスト用にロガーを差し替える
- * @param mockLogger - 使用するモックロガー（指定がなければSilentLoggerを使用）
+ * テスト用のインメモリロガーを取得する
+ * @returns ログを記録するインメモリロガー
  */
-export function setupTestLogger(mockLogger: Logger = new SilentLogger()): Logger {
-  const originalLogger = require("./logger").logger;
-
-  // ロガーのシングルトンインスタンスを差し替え
-  // @ts-ignore - プロパティ書き換え
-  require("./logger").logger = mockLogger;
-
-  // 元のロガーを返すクリーンアップ関数
-  return originalLogger;
-}
-
-/**
- * テスト用にロガーをリセットする
- * @param originalLogger - 元のロガー
- */
-export function resetTestLogger(originalLogger: Logger): void {
-  // @ts-ignore - プロパティ書き換え
-  require("./logger").logger = originalLogger;
+export function getInMemoryLogger() {
+  return createInMemoryLogger();
 }

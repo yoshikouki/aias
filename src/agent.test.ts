@@ -1,7 +1,9 @@
-import { beforeEach, describe, expect, test, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { CodingAgent } from "./agent";
 import type { AIProvider, Message } from "./agent";
+import * as loggerModule from "./lib/logger";
 import { failure, success } from "./lib/result";
+import { createMockLogger } from "./lib/test-utils";
 import * as parser from "./parser";
 
 // AIProviderのモック
@@ -15,17 +17,41 @@ class MockAIProvider implements AIProvider {
   }
 }
 
+// logger モジュールのモック
+vi.mock("./lib/logger", () => {
+  const mockLogger = {
+    log: vi.fn(),
+    error: vi.fn(),
+  };
+  return {
+    logger: mockLogger,
+    createConsoleLogger: vi.fn().mockReturnValue(mockLogger),
+    createSilentLogger: vi.fn().mockReturnValue(mockLogger),
+    createInMemoryLogger: vi.fn().mockReturnValue(mockLogger),
+  };
+});
+
 describe("CodingAgent", () => {
   let mockAIProvider: MockAIProvider;
   let agent: CodingAgent;
+  let mockLogger: ReturnType<typeof createMockLogger>;
 
   beforeEach(() => {
+    vi.resetAllMocks();
     mockAIProvider = new MockAIProvider();
     agent = new CodingAgent(mockAIProvider);
 
-    // コンソール出力をスパイ
-    vi.spyOn(console, "log").mockImplementation(() => {});
-    vi.spyOn(console, "error").mockImplementation(() => {});
+    // モックロガーを作成
+    mockLogger = createMockLogger();
+    // loggerモジュールのloggerをモックロガーで上書き
+    Object.defineProperty(loggerModule, "logger", {
+      value: mockLogger,
+      writable: true,
+    });
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   test("タスクを開始するとAIに初期メッセージが送信されること", async () => {
@@ -130,16 +156,16 @@ describe("CodingAgent", () => {
     // 実行回数をカウントするための変数
     let executionCount = 0;
 
-    // この呼び出しを強制的に有効化
-    vi.spyOn(console, "log").mockImplementation((...args) => {
-      // テスト実行中に実際にログ出力する
-      console.info("[Test Log]", ...args);
-    });
+    // テスト用に独自のログ記録関数を定義
+    const testLogs: string[] = [];
+    const log = (message: string): void => {
+      testLogs.push(message);
+    };
 
     // 実行されるたびに異なる結果を返すモック関数
     mockedParser.mockImplementation(async (assistantResponse: string) => {
       executionCount++;
-      console.log(`Tool execution #${executionCount} with input: ${assistantResponse}`);
+      log(`Tool execution #${executionCount} with input: ${assistantResponse}`);
 
       if (executionCount === 1) {
         return {
@@ -166,7 +192,7 @@ describe("CodingAgent", () => {
     mockAIProvider.responses = [
       "<tool1></tool1>",
       "<tool2></tool2>",
-      "<complete><result>タスク完了</result></complete>",
+      "<complete><r>タスク完了</r></complete>",
     ];
 
     await agent.start("テストタスク");
@@ -179,15 +205,15 @@ describe("CodingAgent", () => {
       .filter((msg) => msg.role === "user")
       .map((msg) => msg.content);
 
-    // 各メッセージを詳細に出力
-    console.log("All messages:");
+    // 各メッセージを詳細に出力（テスト用）
+    log("All messages:");
     mockAIProvider.messages.forEach((msg, i) => {
-      console.log(`[${i}] ${msg.role}: ${msg.content}`);
+      log(`[${i}] ${msg.role}: ${msg.content}`);
     });
 
-    console.log("\nUser messages:");
+    log("\nUser messages:");
     userMessages.forEach((msg, i) => {
-      console.log(`[${i}] ${msg}`);
+      log(`[${i}] ${msg}`);
     });
 
     // 初期のユーザーメッセージ
@@ -206,9 +232,11 @@ describe("CodingAgent", () => {
     // パーサーが正しく呼び出されたことを確認
     expect(mockedParser).toHaveBeenNthCalledWith(1, "<tool1></tool1>");
     expect(mockedParser).toHaveBeenNthCalledWith(2, "<tool2></tool2>");
-    expect(mockedParser).toHaveBeenNthCalledWith(
-      3,
-      "<complete><result>タスク完了</result></complete>",
-    );
+    expect(mockedParser).toHaveBeenNthCalledWith(3, "<complete><r>タスク完了</r></complete>");
+
+    // ロガーに記録されているメッセージを確認
+    expect(mockLogger.logs).toContainEqual(expect.stringContaining(firstResult));
+    expect(mockLogger.logs).toContainEqual(expect.stringContaining(secondResult));
+    expect(mockLogger.logs).toContainEqual(expect.stringContaining(finalResult));
   });
 });
