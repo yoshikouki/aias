@@ -1,4 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { GoogleGenAI } from "@google/genai";
 import { parseAndExecuteTool } from "./parser";
 import type { ToolResult } from "./types";
 
@@ -39,6 +40,32 @@ export class AnthropicProvider implements AIProvider {
     });
 
     return response.content[0].text;
+  }
+}
+
+/**
+ * Google AI (Gemini) を利用したAIプロバイダーの実装
+ */
+export class GoogleAIProvider implements AIProvider {
+  private genAI: GoogleGenAI;
+  private model: string;
+
+  constructor(apiKey: string, model = "gemini-pro") {
+    this.genAI = new GoogleGenAI(apiKey);
+    this.model = model;
+  }
+
+  async generateResponse(messages: Message[]): Promise<string> {
+    const model = this.genAI.getGenerativeModel({ model: this.model });
+
+    // Anthropicのメッセージ形式をGeminiの形式に変換
+    const prompt = messages
+      .map((msg) => `${msg.role === "assistant" ? "Assistant" : "User"}: ${msg.content}`)
+      .join("\n");
+
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    return response.text();
   }
 }
 
@@ -143,8 +170,16 @@ export class CodingAgent {
   /**
    * ファクトリーメソッド: Anthropic APIキーからエージェントを作成
    */
-  static fromApiKey(apiKey: string): CodingAgent {
+  static fromAnthropicApiKey(apiKey: string): CodingAgent {
     const provider = new AnthropicProvider(apiKey);
+    return new CodingAgent(provider);
+  }
+
+  /**
+   * ファクトリーメソッド: Google AI APIキーからエージェントを作成
+   */
+  static fromGoogleApiKey(apiKey: string): CodingAgent {
+    const provider = new GoogleAIProvider(apiKey);
     return new CodingAgent(provider);
   }
 }

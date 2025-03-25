@@ -1,13 +1,13 @@
 import { CodingAgent } from "./agent";
 
 async function main() {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+  const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
-    console.error("ANTHROPIC_API_KEY environment variable is not set");
+    console.error("GEMINI_API_KEY environment variable is not set");
     process.exit(1);
   }
 
-  const agent = CodingAgent.fromApiKey(apiKey);
+  const agent = CodingAgent.fromGoogleApiKey(apiKey);
 
   console.log("Enter your task:");
   const task = await new Promise<string>((resolve) => {
