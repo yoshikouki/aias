@@ -104,20 +104,7 @@ export async function askQuestion(params: AskQuestionParams): Promise<ToolResult
  */
 export async function executeCommand(params: ExecuteCommandParams): Promise<ToolResult> {
   try {
-    if (params.requiresApproval) {
-      logger.log(`\nExecute command?\n${params.command}\n[y/n]: `);
-      const answer = await new Promise<string>((resolve) => {
-        process.stdin.once("data", (data) => resolve(data.toString().trim()));
-      });
-
-      if (answer.toLowerCase() !== "y") {
-        return failure({
-          code: "COMMAND_CANCELLED",
-          message: "Command execution cancelled by user",
-        });
-      }
-    }
-
+    logger.log(`\nExecute command:\n${params.command}`);
     const { stdout, stderr } = await execAsync(params.command);
     return success(`Command output:\n${stdout}\n${stderr}`);
   } catch (error) {
