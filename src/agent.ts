@@ -135,6 +135,7 @@ export class CodingAgent {
     let isComplete = false;
     while (!isComplete) {
       // AIからの応答を取得
+      logger.log(`[${new Date().toISOString()}]: ${this.messages.length}`);
       const assistantResponse = await this.aiProvider.generateResponse(this.messages);
       this.messages.push({ role: "assistant", content: assistantResponse });
 
