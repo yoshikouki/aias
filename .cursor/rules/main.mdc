@@ -189,14 +189,22 @@ test("2+3=5", () => {
 
 ## ディレクトリ配置規則
 
+- package by feature で配置し、技術駆動パッケージング package by layer は避ける
+
 ```
 docs/            # ドキュメント置き場
 src/             # ソースコード
   index.ts       # メインエクスポート
   index.test.ts  # メインエクスポートのテスト
-  lib/           # 内部実装
-  utils/         # ユーティリティ
-  tests/         # テストの共通ファイル
+  features/      # 各機能を配置する
+    **/
+      index.ts
+      module.ts
+      util.ts
+      lib.ts
+  lib/           # 共通の内部実装
+  utils/         # 共通のユーティリティ
+  tests/         # 共通のテストファイル
 examples/        # 使用例
 ref/             # 参考資料置き場
 ```
