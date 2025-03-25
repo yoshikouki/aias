@@ -23,15 +23,8 @@
     // Some stricter flags (disabled by default)
     "noUnusedLocals": false,
     "noUnusedParameters": false,
-    "noPropertyAccessFromIndexSignature": false,
-
-    // Watch options
-    "watchOptions": {
-      "excludeDirectories": ["**/ref", "**/node_modules"],
-      "excludeFiles": ["**/ref/**/*"]
-    }
+    "noPropertyAccessFromIndexSignature": false
   },
-  "exclude": ["ref/**/*"],
-  "include": ["src/**/*"],
-  "files": []
+  "exclude": ["ref", "ref/**/*"],
+  "include": ["src/**/*"]
 }
