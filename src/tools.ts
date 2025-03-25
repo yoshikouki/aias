@@ -7,8 +7,6 @@ import type {
   ExecuteCommandParams,
   ListFileParams,
   ReadFileParams,
-  Result,
-  ToolError,
   ToolResult,
   WriteFileParams,
 } from "./types";
@@ -21,7 +19,23 @@ const execAsync = promisify(exec);
 export async function listFile(params: ListFileParams): Promise<ToolResult> {
   try {
     const files = await fs.readdir(params.path, { recursive: params.recursive });
-    const result = `Directory ${params.path} contents:\n${files.join("\n")}`;
+    // ファイル配列をフォーマットして一覧表示
+    const filesStr = files
+      .map((file) => {
+        // fs.readdirはstring[]またはDirent[]を返す可能性がある
+        if (typeof file === "string") {
+          return file;
+        }
+        // Direntオブジェクトの場合
+        // @ts-ignore - Direntオブジェクトの場合nameプロパティが存在する
+        if (file && typeof file === "object" && "name" in file) {
+          // @ts-ignore
+          return file.name;
+        }
+        return String(file);
+      })
+      .join("\n");
+    const result = `Directory ${params.path} contents:\n${filesStr}`;
     return { ok: true, result };
   } catch (error) {
     return {

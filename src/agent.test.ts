@@ -1,4 +1,4 @@
-import { expect, test, describe, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, test, vi } from "vitest";
 import { CodingAgent } from "./agent";
 import type { AIProvider, Message } from "./agent";
 import * as parser from "./parser";
@@ -35,19 +35,20 @@ describe("CodingAgent", () => {
     });
 
     // AIの応答をセット
-    mockAIProvider.responses = ["<complete><result>タスク完了</result></complete>"];
+    mockAIProvider.responses = ["<complete><r>タスク完了</r></complete>"];
 
     await agent.start("テストタスク");
 
     // システムプロンプトとユーザータスクが送られていることを検証
-    expect(mockAIProvider.messages[0].role).toBe("assistant");
-    expect(mockAIProvider.messages[0].content).toContain("You are a coding agent");
-    expect(mockAIProvider.messages[1].role).toBe("user");
-    expect(mockAIProvider.messages[1].content).toBe("テストタスク");
+    expect(mockAIProvider.messages.length).toBeGreaterThanOrEqual(2);
+    expect(mockAIProvider.messages[0]?.role).toBe("assistant");
+    expect(mockAIProvider.messages[0]?.content).toContain("You are a coding agent");
+    expect(mockAIProvider.messages[1]?.role).toBe("user");
+    expect(mockAIProvider.messages[1]?.content).toBe("テストタスク");
 
     // パーサーが呼び出されたことを検証
     expect(parseAndExecuteToolSpy).toHaveBeenCalledWith(
-      "<complete><result>タスク完了</result></complete>",
+      "<complete><r>タスク完了</r></complete>",
     );
   });
 

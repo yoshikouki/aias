@@ -1,4 +1,4 @@
-import { expect, test, describe, vi, beforeEach } from "vitest";
+import { describe, expect, test } from "vitest";
 import { parseTool } from "./parser";
 import type { Tool } from "./types";
 
@@ -7,8 +7,10 @@ test("無効なレスポンスに対してエラーを返すこと", () => {
   const result = parseTool(invalidResponse);
 
   expect(result.ok).toBe(false);
-  expect(result.error.message).toContain("No valid tool found");
-  expect(result.error.code).toBe("PARSE_ERROR");
+  if (!result.ok) {
+    expect(result.error.message).toContain("No valid tool found");
+    expect(result.error.code).toBe("PARSE_ERROR");
+  }
 });
 
 test("未知のツールタイプに対してエラーを返すこと", () => {
@@ -16,8 +18,10 @@ test("未知のツールタイプに対してエラーを返すこと", () => {
   const result = parseTool(invalidToolResponse);
 
   expect(result.ok).toBe(false);
-  expect(result.error.message).toContain("Unknown tool type");
-  expect(result.error.code).toBe("INVALID_TOOL_TYPE");
+  if (!result.ok) {
+    expect(result.error.message).toContain("Unknown tool type");
+    expect(result.error.code).toBe("INVALID_TOOL_TYPE");
+  }
 });
 
 describe("list_fileツールの解析", () => {
@@ -50,8 +54,10 @@ describe("list_fileツールの解析", () => {
     const result = parseTool(response);
 
     expect(result.ok).toBe(false);
-    expect(result.error.message).toContain("Missing path parameter");
-    expect(result.error.code).toBe("MISSING_PARAM");
+    if (!result.ok) {
+      expect(result.error.message).toContain("Missing path parameter");
+      expect(result.error.code).toBe("MISSING_PARAM");
+    }
   });
 });
 
@@ -73,8 +79,10 @@ describe("read_fileツールの解析", () => {
     const result = parseTool(response);
 
     expect(result.ok).toBe(false);
-    expect(result.error.message).toContain("Missing path parameter");
-    expect(result.error.code).toBe("MISSING_PARAM");
+    if (!result.ok) {
+      expect(result.error.message).toContain("Missing path parameter");
+      expect(result.error.code).toBe("MISSING_PARAM");
+    }
   });
 });
 
@@ -100,7 +108,9 @@ describe("write_fileツールの解析", () => {
     const result = parseTool(response);
 
     expect(result.ok).toBe(false);
-    expect(result.error.message).toContain("Missing path parameter");
+    if (!result.ok) {
+      expect(result.error.message).toContain("Missing path parameter");
+    }
   });
 
   test("内容が指定されていない場合にエラーを返すこと", () => {
@@ -108,7 +118,9 @@ describe("write_fileツールの解析", () => {
     const result = parseTool(response);
 
     expect(result.ok).toBe(false);
-    expect(result.error.message).toContain("Missing content parameter");
+    if (!result.ok) {
+      expect(result.error.message).toContain("Missing content parameter");
+    }
   });
 });
 
@@ -130,7 +142,9 @@ describe("ask_questionツールの解析", () => {
     const result = parseTool(response);
 
     expect(result.ok).toBe(false);
-    expect(result.error.message).toContain("Missing question parameter");
+    if (!result.ok) {
+      expect(result.error.message).toContain("Missing question parameter");
+    }
   });
 });
 
@@ -172,7 +186,9 @@ describe("execute_commandツールの解析", () => {
     const result = parseTool(response);
 
     expect(result.ok).toBe(false);
-    expect(result.error.message).toContain("Missing command parameter");
+    if (!result.ok) {
+      expect(result.error.message).toContain("Missing command parameter");
+    }
   });
 });
 
@@ -194,6 +210,8 @@ describe("completeツールの解析", () => {
     const result = parseTool(response);
 
     expect(result.ok).toBe(false);
-    expect(result.error.message).toContain("Missing result parameter");
+    if (!result.ok) {
+      expect(result.error.message).toContain("Missing result parameter");
+    }
   });
 });

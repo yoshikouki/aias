@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import type { Result, Success, Failure, ToolError, ToolResult } from "./types";
+import type { Failure, Result, Success, ToolError, ToolResult } from "./types";
 
 test("Success型が正しく機能すること", () => {
   const success: Success<number> = { ok: true, result: 42 };
@@ -26,7 +26,8 @@ test("Result型を使って成功時の分岐処理ができること", () => {
   if (successResult.ok) {
     message = successResult.result;
   } else {
-    message = successResult.error.message;
+    // Using type assertion because TypeScript doesn't recognize this branch is unreachable
+    message = (successResult as Failure<ToolError>).error.message;
   }
 
   expect(message).toBe("成功しました");
@@ -41,7 +42,8 @@ test("Result型を使って失敗時の分岐処理ができること", () => {
   // Result型を使った条件分岐
   let message = "";
   if (errorResult.ok) {
-    message = errorResult.result;
+    // Using type assertion because TypeScript doesn't recognize this branch is unreachable
+    message = (errorResult as Success<string>).result;
   } else {
     message = errorResult.error.message;
   }

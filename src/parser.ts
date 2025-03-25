@@ -76,7 +76,9 @@ export function parseTool(response: string): Result<Tool, ToolError> {
 /**
  * ツールタイプが有効かチェックする
  */
-function isValidToolType(type: string): type is ToolType {
+function isValidToolType(type: string | undefined): type is ToolType {
+  if (!type) return false;
+
   const validTypes: ToolType[] = [
     "list_file",
     "read_file",
@@ -93,7 +95,7 @@ function isValidToolType(type: string): type is ToolType {
  */
 function parseParams(
   toolType: ToolType,
-  content: string,
+  content: string | undefined,
 ): Result<
   | ListFileParams
   | ReadFileParams
@@ -103,13 +105,32 @@ function parseParams(
   | CompleteParams,
   ToolError
 > {
+  if (!content) {
+    const errorMessages: Record<ToolType, string> = {
+      list_file: "Missing path parameter for list_file tool",
+      read_file: "Missing path parameter for read_file tool",
+      write_file: "Missing path parameter for write_file tool",
+      ask_question: "Missing question parameter for ask_question tool",
+      execute_command: "Missing command parameter for execute_command tool",
+      complete: "Missing result parameter for complete tool",
+    };
+
+    return {
+      ok: false,
+      error: {
+        message: errorMessages[toolType],
+        code: "MISSING_PARAM",
+      },
+    };
+  }
+
   try {
     switch (toolType) {
       case "list_file": {
         const pathMatch = content.match(/<path>(.*?)<\/path>/);
         const recursiveMatch = content.match(/<recursive>(.*?)<\/recursive>/);
 
-        if (!pathMatch) {
+        if (!pathMatch || !pathMatch[1]) {
           return {
             ok: false,
             error: {
@@ -123,7 +144,7 @@ function parseParams(
           ok: true,
           result: {
             path: pathMatch[1],
-            recursive: recursiveMatch ? recursiveMatch[1].toLowerCase() === "true" : false,
+            recursive: recursiveMatch?.[1]?.toLowerCase() === "true",
           },
         };
       }
@@ -131,7 +152,7 @@ function parseParams(
       case "read_file": {
         const readPathMatch = content.match(/<path>(.*?)<\/path>/);
 
-        if (!readPathMatch) {
+        if (!readPathMatch || !readPathMatch[1]) {
           return {
             ok: false,
             error: {
@@ -151,7 +172,7 @@ function parseParams(
         const writePathMatch = content.match(/<path>(.*?)<\/path>/);
         const contentMatch = content.match(/<content>([\s\S]*?)<\/content>/);
 
-        if (!writePathMatch) {
+        if (!writePathMatch || !writePathMatch[1]) {
           return {
             ok: false,
             error: {
@@ -161,7 +182,7 @@ function parseParams(
           };
         }
 
-        if (!contentMatch) {
+        if (!contentMatch || !contentMatch[1]) {
           return {
             ok: false,
             error: {
@@ -183,7 +204,7 @@ function parseParams(
       case "ask_question": {
         const questionMatch = content.match(/<question>(.*?)<\/question>/);
 
-        if (!questionMatch) {
+        if (!questionMatch || !questionMatch[1]) {
           return {
             ok: false,
             error: {
@@ -203,7 +224,7 @@ function parseParams(
         const commandMatch = content.match(/<command>(.*?)<\/command>/);
         const approvalMatch = content.match(/<requires_approval>(.*?)<\/requires_approval>/);
 
-        if (!commandMatch) {
+        if (!commandMatch || !commandMatch[1]) {
           return {
             ok: false,
             error: {
@@ -217,15 +238,19 @@ function parseParams(
           ok: true,
           result: {
             command: commandMatch[1],
-            requiresApproval: approvalMatch ? approvalMatch[1].toLowerCase() === "true" : true,
+            requiresApproval: approvalMatch?.[1]
+              ? approvalMatch[1].toLowerCase() === "true"
+              : true,
           },
         };
       }
 
       case "complete": {
-        const resultMatch = content.match(/<result>(.*?)<\/result>/);
+        const resultMatchR = content.match(/<r>(.*?)<\/r>/);
+        const resultMatchResult = content.match(/<result>(.*?)<\/result>/);
+        const resultMatch = resultMatchR || resultMatchResult;
 
-        if (!resultMatch) {
+        if (!resultMatch || !resultMatch[1]) {
           return {
             ok: false,
             error: {
