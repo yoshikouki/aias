@@ -1,7 +1,8 @@
-import Anthropic from "@anthropic-ai/sdk";
-import { GoogleGenAI } from "@google/genai";
+import { createAnthropic } from "@ai-sdk/anthropic";
+import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { parseAndExecuteTool } from "./parser";
 import type { ToolResult } from "./types";
+import { generateText } from "ai";
 
 /**
  * AIプロバイダーを抽象化するアダプター
@@ -23,23 +24,22 @@ export interface Message {
  * Anthropicを利用したAIプロバイダーの実装
  */
 export class AnthropicProvider implements AIProvider {
-  private anthropic: Anthropic;
+  private anthropic: ReturnType<typeof createAnthropic>;
   private model: string;
 
   constructor(apiKey: string, model = "claude-3-7-sonnet-20250219") {
-    this.anthropic = new Anthropic({ apiKey });
+    this.anthropic = createAnthropic({ apiKey });
     this.model = model;
   }
 
   async generateResponse(messages: Message[]): Promise<string> {
-    const response = await this.anthropic.messages.create({
-      model: this.model,
-      max_tokens: 4096,
+    const response = await generateText({
+      model: this.anthropic(this.model),
       messages,
       temperature: 0.7,
     });
 
-    return response.content[0].text;
+    return response.text;
   }
 }
 
@@ -47,25 +47,22 @@ export class AnthropicProvider implements AIProvider {
  * Google AI (Gemini) を利用したAIプロバイダーの実装
  */
 export class GoogleAIProvider implements AIProvider {
-  private genAI: GoogleGenAI;
+  private google: ReturnType<typeof createGoogleGenerativeAI>;
   private model: string;
 
-  constructor(apiKey: string, model = "gemini-pro") {
-    this.genAI = new GoogleGenAI(apiKey);
+  constructor(apiKey: string, model = "gemini-2.0-flash") {
+    this.google = createGoogleGenerativeAI({ apiKey });
     this.model = model;
   }
 
   async generateResponse(messages: Message[]): Promise<string> {
-    const model = this.genAI.getGenerativeModel({ model: this.model });
+    const response = await generateText({
+      model: this.google(this.model),
+      messages,
+      temperature: 0.7,
+    });
 
-    // Anthropicのメッセージ形式をGeminiの形式に変換
-    const prompt = messages
-      .map((msg) => `${msg.role === "assistant" ? "Assistant" : "User"}: ${msg.content}`)
-      .join("\n");
-
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    return response.text();
+    return response.text;
   }
 }
 

@@ -13,8 +13,8 @@
     "update:all": "bun update --latest"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.39.0",
-    "@google/genai": "^0.6.0",
+    "@ai-sdk/anthropic": "^1.2.1",
+    "@ai-sdk/google": "^1.2.2",
     "ai": "^4.2.1"
   },
   "devDependencies": {
