@@ -5,116 +5,266 @@ import type {
   ExecuteCommandParams,
   ListFileParams,
   ReadFileParams,
+  Result,
   Tool,
-  ToolResponse,
+  ToolError,
+  ToolExecutionResult,
+  ToolResult,
   ToolType,
   WriteFileParams,
 } from "./types";
 
-export async function parseAndExecuteTool(
-  response: string,
-): Promise<{ response: ToolResponse; isComplete: boolean }> {
+/**
+ * AIの応答からツール呼び出しを解析し、実行する
+ */
+export async function parseAndExecuteTool(response: string): Promise<ToolExecutionResult> {
+  const parsedTool = parseTool(response);
+
+  if (!parsedTool.ok) {
+    return {
+      toolResult: parsedTool,
+      isComplete: false,
+    };
+  }
+
+  const toolResult = await executeTool(parsedTool.result);
+  return {
+    toolResult,
+    isComplete: parsedTool.result.type === "complete",
+  };
+}
+
+/**
+ * AIの応答からツール呼び出しを解析する
+ */
+export function parseTool(response: string): Result<Tool, ToolError> {
   const toolMatch = response.match(/<([a-z_]+)>([\s\S]*?)<\/\1>/);
   if (!toolMatch) {
     return {
-      response: { success: false, message: "No valid tool found" },
-      isComplete: false,
+      ok: false,
+      error: { message: "No valid tool found in response", code: "PARSE_ERROR" },
     };
   }
 
   const [, toolType, content] = toolMatch;
-  const params = parseParams(toolType as ToolType, content);
 
-  if (!params) {
+  if (!isValidToolType(toolType)) {
     return {
-      response: { success: false, message: `Failed to parse parameters for tool: ${toolType}` },
-      isComplete: false,
+      ok: false,
+      error: {
+        message: `Unknown tool type: ${toolType}`,
+        code: "INVALID_TOOL_TYPE",
+      },
     };
   }
 
-  const tool: Tool = {
-    type: toolType as ToolType,
-    params,
-  };
+  const params = parseParams(toolType, content);
 
-  const toolResponse = await executeTool(tool);
+  if (!params.ok) {
+    return params;
+  }
+
   return {
-    response: toolResponse,
-    isComplete: toolType === "complete",
+    ok: true,
+    result: {
+      type: toolType,
+      params: params.result,
+    },
   };
 }
 
+/**
+ * ツールタイプが有効かチェックする
+ */
+function isValidToolType(type: string): type is ToolType {
+  const validTypes: ToolType[] = [
+    "list_file",
+    "read_file",
+    "write_file",
+    "ask_question",
+    "execute_command",
+    "complete",
+  ];
+  return validTypes.includes(type as ToolType);
+}
+
+/**
+ * ツールのパラメータを解析する
+ */
 function parseParams(
   toolType: ToolType,
   content: string,
-):
+): Result<
   | ListFileParams
   | ReadFileParams
   | WriteFileParams
   | AskQuestionParams
   | ExecuteCommandParams
-  | CompleteParams
-  | null {
+  | CompleteParams,
+  ToolError
+> {
   try {
     switch (toolType) {
       case "list_file": {
         const pathMatch = content.match(/<path>(.*?)<\/path>/);
         const recursiveMatch = content.match(/<recursive>(.*?)<\/recursive>/);
-        if (!pathMatch) return null;
+
+        if (!pathMatch) {
+          return {
+            ok: false,
+            error: {
+              message: "Missing path parameter for list_file tool",
+              code: "MISSING_PARAM",
+            },
+          };
+        }
+
         return {
-          path: pathMatch[1],
-          recursive: recursiveMatch ? recursiveMatch[1].toLowerCase() === "true" : false,
+          ok: true,
+          result: {
+            path: pathMatch[1],
+            recursive: recursiveMatch ? recursiveMatch[1].toLowerCase() === "true" : false,
+          },
         };
       }
 
       case "read_file": {
         const readPathMatch = content.match(/<path>(.*?)<\/path>/);
-        if (!readPathMatch) return null;
-        return { path: readPathMatch[1] };
+
+        if (!readPathMatch) {
+          return {
+            ok: false,
+            error: {
+              message: "Missing path parameter for read_file tool",
+              code: "MISSING_PARAM",
+            },
+          };
+        }
+
+        return {
+          ok: true,
+          result: { path: readPathMatch[1] },
+        };
       }
 
       case "write_file": {
         const writePathMatch = content.match(/<path>(.*?)<\/path>/);
         const contentMatch = content.match(/<content>([\s\S]*?)<\/content>/);
-        if (!writePathMatch || !contentMatch) return null;
+
+        if (!writePathMatch) {
+          return {
+            ok: false,
+            error: {
+              message: "Missing path parameter for write_file tool",
+              code: "MISSING_PARAM",
+            },
+          };
+        }
+
+        if (!contentMatch) {
+          return {
+            ok: false,
+            error: {
+              message: "Missing content parameter for write_file tool",
+              code: "MISSING_PARAM",
+            },
+          };
+        }
+
         return {
-          path: writePathMatch[1],
-          content: contentMatch[1],
+          ok: true,
+          result: {
+            path: writePathMatch[1],
+            content: contentMatch[1],
+          },
         };
       }
 
       case "ask_question": {
         const questionMatch = content.match(/<question>(.*?)<\/question>/);
-        if (!questionMatch) return null;
-        return { question: questionMatch[1] };
+
+        if (!questionMatch) {
+          return {
+            ok: false,
+            error: {
+              message: "Missing question parameter for ask_question tool",
+              code: "MISSING_PARAM",
+            },
+          };
+        }
+
+        return {
+          ok: true,
+          result: { question: questionMatch[1] },
+        };
       }
 
       case "execute_command": {
         const commandMatch = content.match(/<command>(.*?)<\/command>/);
         const approvalMatch = content.match(/<requires_approval>(.*?)<\/requires_approval>/);
-        if (!commandMatch) return null;
+
+        if (!commandMatch) {
+          return {
+            ok: false,
+            error: {
+              message: "Missing command parameter for execute_command tool",
+              code: "MISSING_PARAM",
+            },
+          };
+        }
+
         return {
-          command: commandMatch[1],
-          requiresApproval: approvalMatch ? approvalMatch[1].toLowerCase() === "true" : false,
+          ok: true,
+          result: {
+            command: commandMatch[1],
+            requiresApproval: approvalMatch ? approvalMatch[1].toLowerCase() === "true" : true,
+          },
         };
       }
 
       case "complete": {
         const resultMatch = content.match(/<result>(.*?)<\/result>/);
-        if (!resultMatch) return null;
-        return { result: resultMatch[1] };
+
+        if (!resultMatch) {
+          return {
+            ok: false,
+            error: {
+              message: "Missing result parameter for complete tool",
+              code: "MISSING_PARAM",
+            },
+          };
+        }
+
+        return {
+          ok: true,
+          result: { result: resultMatch[1] },
+        };
       }
 
       default:
-        return null;
+        return {
+          ok: false,
+          error: {
+            message: `Unknown tool type: ${toolType}`,
+            code: "INVALID_TOOL_TYPE",
+          },
+        };
     }
   } catch (error) {
-    console.error(`Error parsing parameters for ${toolType}:`, error);
-    return null;
+    return {
+      ok: false,
+      error: {
+        message: `Error parsing parameters for ${toolType}: ${error instanceof Error ? error.message : String(error)}`,
+        code: "PARSE_ERROR",
+      },
+    };
   }
 }
 
-async function executeTool(tool: Tool): Promise<ToolResponse> {
+/**
+ * ツールを実行する
+ */
+async function executeTool(tool: Tool): Promise<ToolResult> {
   switch (tool.type) {
     case "list_file":
       return tools.listFile(tool.params as ListFileParams);
@@ -129,6 +279,12 @@ async function executeTool(tool: Tool): Promise<ToolResponse> {
     case "complete":
       return tools.complete(tool.params as CompleteParams);
     default:
-      return { success: false, message: `Unknown tool type: ${tool.type}` };
+      return {
+        ok: false,
+        error: {
+          message: `Unknown tool type: ${tool.type}`,
+          code: "INVALID_TOOL_TYPE",
+        },
+      };
   }
 }

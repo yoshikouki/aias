@@ -7,7 +7,7 @@ async function main() {
     process.exit(1);
   }
 
-  const agent = new CodingAgent(apiKey);
+  const agent = CodingAgent.fromApiKey(apiKey);
 
   console.log("Enter your task:");
   const task = await new Promise<string>((resolve) => {
@@ -17,7 +17,7 @@ async function main() {
   try {
     await agent.start(task);
   } catch (error) {
-    console.error("Error:", error);
+    console.error("Error:", error instanceof Error ? error.message : String(error));
     process.exit(1);
   }
 }

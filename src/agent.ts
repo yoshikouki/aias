@@ -1,5 +1,46 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { parseAndExecuteTool } from "./parser";
+import type { ToolResult } from "./types";
+
+/**
+ * AIプロバイダーを抽象化するアダプター
+ */
+export interface AIProvider {
+  generateResponse(messages: Message[]): Promise<string>;
+}
+
+/**
+ * メッセージの型定義
+ */
+export type Role = "user" | "assistant";
+export interface Message {
+  role: Role;
+  content: string;
+}
+
+/**
+ * Anthropicを利用したAIプロバイダーの実装
+ */
+export class AnthropicProvider implements AIProvider {
+  private anthropic: Anthropic;
+  private model: string;
+
+  constructor(apiKey: string, model = "claude-3-7-sonnet-20250219") {
+    this.anthropic = new Anthropic({ apiKey });
+    this.model = model;
+  }
+
+  async generateResponse(messages: Message[]): Promise<string> {
+    const response = await this.anthropic.messages.create({
+      model: this.model,
+      max_tokens: 4096,
+      messages,
+      temperature: 0.7,
+    });
+
+    return response.content[0].text;
+  }
+}
 
 const systemPrompt = `You are a coding agent. Use the following tools to complete tasks:
 
@@ -46,15 +87,21 @@ Indicate task completion.
 
 Always use one of the above tools. Do not respond directly without using a tool.`;
 
+/**
+ * コーディングエージェントを実装
+ */
 export class CodingAgent {
-  private anthropic: Anthropic;
-  private messages: { role: "user" | "assistant"; content: string }[] = [];
+  private aiProvider: AIProvider;
+  private messages: Message[] = [];
 
-  constructor(apiKey: string) {
-    this.anthropic = new Anthropic({ apiKey });
+  constructor(aiProvider: AIProvider) {
+    this.aiProvider = aiProvider;
   }
 
-  async start(task: string) {
+  /**
+   * タスクを開始する
+   */
+  async start(task: string): Promise<void> {
     this.messages = [
       { role: "assistant", content: systemPrompt },
       { role: "user", content: task },
@@ -62,25 +109,42 @@ export class CodingAgent {
 
     let isComplete = false;
     while (!isComplete) {
-      const response = await this.anthropic.messages.create({
-        model: "claude-3-7-sonnet-20250219",
-        max_tokens: 4096,
-        messages: this.messages,
-        temperature: 0.7,
-      });
-
-      const assistantResponse = response.content[0].text;
+      // AIからの応答を取得
+      const assistantResponse = await this.aiProvider.generateResponse(this.messages);
       this.messages.push({ role: "assistant", content: assistantResponse });
 
-      const { response: toolResponse, isComplete: complete } =
-        await parseAndExecuteTool(assistantResponse);
+      // ツールを解析して実行
+      const { toolResult, isComplete: complete } = await parseAndExecuteTool(assistantResponse);
 
-      if (toolResponse.success) {
-        console.log(`\n[${toolResponse.message}]`);
-      }
+      // 結果をユーザーに表示
+      this.displayToolResult(toolResult);
 
-      this.messages.push({ role: "user", content: `[Tool Result] ${toolResponse.message}` });
+      // 結果をメッセージに追加
+      this.messages.push({
+        role: "user",
+        content: `[Tool Result] ${toolResult.ok ? toolResult.result : toolResult.error.message}`,
+      });
+
       isComplete = complete;
     }
+  }
+
+  /**
+   * ツール実行結果を表示
+   */
+  private displayToolResult(result: ToolResult): void {
+    if (result.ok) {
+      console.log(`\n[${result.result}]`);
+    } else {
+      console.error(`\n[Error: ${result.error.message}]`);
+    }
+  }
+
+  /**
+   * ファクトリーメソッド: Anthropic APIキーからエージェントを作成
+   */
+  static fromApiKey(apiKey: string): CodingAgent {
+    const provider = new AnthropicProvider(apiKey);
+    return new CodingAgent(provider);
   }
 }

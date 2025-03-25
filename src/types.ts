@@ -1,3 +1,15 @@
+export type Success<T> = { ok: true; result: T };
+export type Failure<E> = { ok: false; error: E };
+export type Result<T, E> = Success<T> | Failure<E>;
+
+export type ToolError = {
+  message: string;
+  code?: string;
+};
+
+export type ToolSuccess<T = string> = T;
+export type ToolResult<T = string> = Result<T, ToolError>;
+
 export interface ToolResponse {
   success: boolean;
   message: string;
@@ -47,4 +59,9 @@ export interface Tool {
     | AskQuestionParams
     | ExecuteCommandParams
     | CompleteParams;
+}
+
+export interface ToolExecutionResult {
+  toolResult: ToolResult;
+  isComplete: boolean;
 }
