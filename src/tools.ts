@@ -1,6 +1,7 @@
 import { exec } from "node:child_process";
 import { promises as fs } from "node:fs";
 import { promisify } from "node:util";
+import { failure, success } from "./lib/result";
 import type {
   AskQuestionParams,
   CompleteParams,
@@ -36,15 +37,13 @@ export async function listFile(params: ListFileParams): Promise<ToolResult> {
       })
       .join("\n");
     const result = `Directory ${params.path} contents:\n${filesStr}`;
-    return { ok: true, result };
+    return success(result);
   } catch (error) {
-    return {
-      ok: false,
-      error: {
-        message: `Failed to list directory: ${error instanceof Error ? error.message : String(error)}`,
-        code: "LIST_FILE_ERROR",
-      },
-    };
+    return failure({
+      code: "LIST_FILE_ERROR",
+      message: "Failed to list directory",
+      error,
+    });
   }
 }
 
@@ -54,15 +53,13 @@ export async function listFile(params: ListFileParams): Promise<ToolResult> {
 export async function readFile(params: ReadFileParams): Promise<ToolResult> {
   try {
     const content = await fs.readFile(params.path, "utf-8");
-    return { ok: true, result: content };
+    return success(content);
   } catch (error) {
-    return {
-      ok: false,
-      error: {
-        message: `Failed to read file: ${error instanceof Error ? error.message : String(error)}`,
-        code: "READ_FILE_ERROR",
-      },
-    };
+    return failure({
+      code: "READ_FILE_ERROR",
+      message: "Failed to read file",
+      error,
+    });
   }
 }
 
@@ -72,15 +69,13 @@ export async function readFile(params: ReadFileParams): Promise<ToolResult> {
 export async function writeFile(params: WriteFileParams): Promise<ToolResult> {
   try {
     await fs.writeFile(params.path, params.content, "utf-8");
-    return { ok: true, result: `Successfully wrote to ${params.path}` };
+    return success(`Successfully wrote to ${params.path}`);
   } catch (error) {
-    return {
-      ok: false,
-      error: {
-        message: `Failed to write file: ${error instanceof Error ? error.message : String(error)}`,
-        code: "WRITE_FILE_ERROR",
-      },
-    };
+    return failure({
+      code: "WRITE_FILE_ERROR",
+      message: "Failed to write file",
+      error,
+    });
   }
 }
 
@@ -93,15 +88,13 @@ export async function askQuestion(params: AskQuestionParams): Promise<ToolResult
     const answer = await new Promise<string>((resolve) => {
       process.stdin.once("data", (data) => resolve(data.toString().trim()));
     });
-    return { ok: true, result: `User answered: ${answer}` };
+    return success(`User answered: ${answer}`);
   } catch (error) {
-    return {
-      ok: false,
-      error: {
-        message: `Failed to get user answer: ${error instanceof Error ? error.message : String(error)}`,
-        code: "ASK_QUESTION_ERROR",
-      },
-    };
+    return failure({
+      code: "ASK_QUESTION_ERROR",
+      message: "Failed to get user answer",
+      error,
+    });
   }
 }
 
@@ -117,26 +110,21 @@ export async function executeCommand(params: ExecuteCommandParams): Promise<Tool
       });
 
       if (answer.toLowerCase() !== "y") {
-        return {
-          ok: false,
-          error: {
-            message: "Command execution cancelled by user",
-            code: "COMMAND_CANCELLED",
-          },
-        };
+        return failure({
+          code: "COMMAND_CANCELLED",
+          message: "Command execution cancelled by user",
+        });
       }
     }
 
     const { stdout, stderr } = await execAsync(params.command);
-    return { ok: true, result: `Command output:\n${stdout}\n${stderr}` };
+    return success(`Command output:\n${stdout}\n${stderr}`);
   } catch (error) {
-    return {
-      ok: false,
-      error: {
-        message: `Command execution failed: ${error instanceof Error ? error.message : String(error)}`,
-        code: "EXECUTE_COMMAND_ERROR",
-      },
-    };
+    return failure({
+      code: "EXECUTE_COMMAND_ERROR",
+      message: "Command execution failed",
+      error,
+    });
   }
 }
 
@@ -144,5 +132,5 @@ export async function executeCommand(params: ExecuteCommandParams): Promise<Tool
  * タスク完了を示す
  */
 export async function complete(params: CompleteParams): Promise<ToolResult> {
-  return { ok: true, result: `Task completed: ${params.result}` };
+  return success(`Task completed: ${params.result}`);
 }

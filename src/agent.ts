@@ -1,8 +1,8 @@
 import { createAnthropic } from "@ai-sdk/anthropic";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
+import { generateText } from "ai";
 import { parseAndExecuteTool } from "./parser";
 import type { ToolResult } from "./types";
-import { generateText } from "ai";
 
 /**
  * AIプロバイダーを抽象化するアダプター

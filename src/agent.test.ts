@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
 import { CodingAgent } from "./agent";
 import type { AIProvider, Message } from "./agent";
+import { failure, success } from "./lib/result";
 import * as parser from "./parser";
 
 // AIProviderのモック
@@ -30,7 +31,7 @@ describe("CodingAgent", () => {
   test("タスクを開始するとAIに初期メッセージが送信されること", async () => {
     // パーサーの呼び出しをモック
     const parseAndExecuteToolSpy = vi.spyOn(parser, "parseAndExecuteTool").mockResolvedValue({
-      toolResult: { ok: true, result: "成功しました" },
+      toolResult: success("成功しました"),
       isComplete: true,
     });
 
@@ -56,11 +57,11 @@ describe("CodingAgent", () => {
     // パーサーの呼び出しをモック
     vi.spyOn(parser, "parseAndExecuteTool")
       .mockResolvedValueOnce({
-        toolResult: { ok: true, result: "ツール実行結果" },
+        toolResult: success("ツール実行結果"),
         isComplete: false,
       })
       .mockResolvedValueOnce({
-        toolResult: { ok: true, result: "最終結果" },
+        toolResult: success("最終結果"),
         isComplete: true,
       });
 
@@ -91,17 +92,14 @@ describe("CodingAgent", () => {
     // パーサーの呼び出しをモック
     vi.spyOn(parser, "parseAndExecuteTool")
       .mockResolvedValueOnce({
-        toolResult: {
-          ok: false,
-          error: {
-            message: "ツール実行エラー",
-            code: "TEST_ERROR",
-          },
-        },
+        toolResult: failure({
+          message: "ツール実行エラー",
+          code: "TEST_ERROR",
+        }),
         isComplete: false,
       })
       .mockResolvedValueOnce({
-        toolResult: { ok: true, result: "最終結果" },
+        toolResult: success("最終結果"),
         isComplete: true,
       });
 
@@ -145,21 +143,21 @@ describe("CodingAgent", () => {
 
       if (executionCount === 1) {
         return {
-          toolResult: { ok: true, result: firstResult },
+          toolResult: success(firstResult),
           isComplete: false,
         };
       }
 
       if (executionCount === 2) {
         return {
-          toolResult: { ok: true, result: secondResult },
+          toolResult: success(secondResult),
           isComplete: false,
         };
       }
 
       // 3回目以降
       return {
-        toolResult: { ok: true, result: finalResult },
+        toolResult: success(finalResult),
         isComplete: true,
       };
     });

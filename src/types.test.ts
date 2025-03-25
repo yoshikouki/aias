@@ -1,25 +1,23 @@
 import { expect, test } from "vitest";
+import { failure, success } from "./lib/result";
 import type { Failure, Result, Success, ToolError, ToolResult } from "./types";
 
 test("Success型が正しく機能すること", () => {
-  const success: Success<number> = { ok: true, result: 42 };
-  expect(success.ok).toBe(true);
-  expect(success.result).toBe(42);
+  const successObj = success<number>(42);
+  expect(successObj.ok).toBe(true);
+  expect(successObj.result).toBe(42);
 });
 
 test("Failure型が正しく機能すること", () => {
   const error: ToolError = { message: "エラーが発生しました", code: "TEST_ERROR" };
-  const failure: Failure<ToolError> = { ok: false, error };
+  const failureObj = failure(error);
 
-  expect(failure.ok).toBe(false);
-  expect(failure.error).toEqual(error);
+  expect(failureObj.ok).toBe(false);
+  expect(failureObj.error).toEqual(error);
 });
 
 test("Result型を使って成功時の分岐処理ができること", () => {
-  const successResult: Result<string, ToolError> = {
-    ok: true,
-    result: "成功しました",
-  };
+  const successResult: Result<string, ToolError> = success("成功しました");
 
   // Result型を使った条件分岐
   let message = "";
@@ -34,10 +32,10 @@ test("Result型を使って成功時の分岐処理ができること", () => {
 });
 
 test("Result型を使って失敗時の分岐処理ができること", () => {
-  const errorResult: Result<string, ToolError> = {
-    ok: false,
-    error: { message: "失敗しました", code: "FAIL" },
-  };
+  const errorResult: Result<string, ToolError> = failure({
+    message: "失敗しました",
+    code: "FAIL",
+  });
 
   // Result型を使った条件分岐
   let message = "";
@@ -53,22 +51,16 @@ test("Result型を使って失敗時の分岐処理ができること", () => {
 
 test("ToolResult型が正しく機能すること", () => {
   // 成功例
-  const successToolResult: ToolResult = {
-    ok: true,
-    result: "ツールが正常に実行されました",
-  };
+  const successToolResult: ToolResult = success("ツールが正常に実行されました");
 
   expect(successToolResult.ok).toBe(true);
   expect(successToolResult.result).toBe("ツールが正常に実行されました");
 
   // 失敗例
-  const failureToolResult: ToolResult = {
-    ok: false,
-    error: {
-      message: "ツールの実行に失敗しました",
-      code: "TOOL_ERROR",
-    },
-  };
+  const failureToolResult: ToolResult = failure({
+    message: "ツールの実行に失敗しました",
+    code: "TOOL_ERROR",
+  });
 
   expect(failureToolResult.ok).toBe(false);
   expect(failureToolResult.error.message).toBe("ツールの実行に失敗しました");
