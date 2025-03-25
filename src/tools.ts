@@ -1,5 +1,4 @@
 import { exec } from "node:child_process";
-import { promises as fs } from "node:fs";
 import { promisify } from "node:util";
 import { logger } from "./lib/logger";
 import { failure, success } from "./lib/result";
@@ -12,15 +11,19 @@ import type {
   ToolResult,
   WriteFileParams,
 } from "./types";
+import { FSAdapter, defaultFSAdapter } from "./lib/fsAdapter";
 
 const execAsync = promisify(exec);
 
 /**
  * ディレクトリ内のファイル一覧を取得する
  */
-export async function listFile(params: ListFileParams): Promise<ToolResult> {
+export async function listFile(
+  params: ListFileParams,
+  fsAdapter: FSAdapter = defaultFSAdapter
+): Promise<ToolResult> {
   try {
-    const files = await fs.readdir(params.path, { recursive: params.recursive });
+    const files = await fsAdapter.readdir(params.path, { recursive: params.recursive });
     // ファイル配列をフォーマットして一覧表示
     const filesStr = files
       .map((file) => {
@@ -51,9 +54,12 @@ export async function listFile(params: ListFileParams): Promise<ToolResult> {
 /**
  * ファイル内容を読み込む
  */
-export async function readFile(params: ReadFileParams): Promise<ToolResult> {
+export async function readFile(
+  params: ReadFileParams,
+  fsAdapter: FSAdapter = defaultFSAdapter
+): Promise<ToolResult> {
   try {
-    const content = await fs.readFile(params.path, "utf-8");
+    const content = await fsAdapter.readFile(params.path, "utf-8");
     return success(content);
   } catch (error) {
     return failure({
@@ -67,9 +73,12 @@ export async function readFile(params: ReadFileParams): Promise<ToolResult> {
 /**
  * ファイルに内容を書き込む
  */
-export async function writeFile(params: WriteFileParams): Promise<ToolResult> {
+export async function writeFile(
+  params: WriteFileParams,
+  fsAdapter: FSAdapter = defaultFSAdapter
+): Promise<ToolResult> {
   try {
-    await fs.writeFile(params.path, params.content, "utf-8");
+    await fsAdapter.writeFile(params.path, params.content, "utf-8");
     return success(`Successfully wrote to ${params.path}`);
   } catch (error) {
     return failure({

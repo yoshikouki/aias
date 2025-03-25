@@ -1,19 +1,10 @@
 import { exec } from "node:child_process";
-import { promises as fs } from "node:fs";
 import type { Dirent } from "node:fs";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import * as loggerModule from "./lib/logger";
 import { createMockLogger } from "./lib/test-utils";
 import * as tools from "./tools";
-
-// fs.readdir, fs.readFile, fs.writeFileのモック
-vi.mock("node:fs", () => ({
-  promises: {
-    readdir: vi.fn(),
-    readFile: vi.fn(),
-    writeFile: vi.fn(),
-  },
-}));
+import { FSAdapter } from "./lib/fsAdapter";
 
 // exec関数のモック
 vi.mock("node:child_process", () => {
@@ -66,13 +57,16 @@ describe("tools", () => {
 
   describe("listFile", () => {
     test("正常にファイル一覧を取得できる場合", async () => {
-      // モックの戻り値を設定
-      vi.mocked(fs.readdir).mockResolvedValue([
-        { name: "file1.txt", isFile: () => true } as unknown as Dirent,
-        { name: "file2.txt", isFile: () => true } as unknown as Dirent,
-      ]);
+      const mockFSAdapter: FSAdapter = {
+        readdir: vi.fn().mockResolvedValue([
+          { name: "file1.txt", isFile: () => true } as unknown as Dirent,
+          { name: "file2.txt", isFile: () => true } as unknown as Dirent,
+        ]),
+        readFile: vi.fn(),
+        writeFile: vi.fn(),
+      };
 
-      const result = await tools.listFile({ path: "src", recursive: false });
+      const result = await tools.listFile({ path: "src", recursive: false }, mockFSAdapter);
 
       expect(result.ok).toBe(true);
       if (result.ok) {
@@ -80,14 +74,17 @@ describe("tools", () => {
         expect(result.result).toContain("file1.txt");
         expect(result.result).toContain("file2.txt");
       }
-      expect(fs.readdir).toHaveBeenCalledWith("src", { recursive: false });
+      expect(mockFSAdapter.readdir).toHaveBeenCalledWith("src", { recursive: false });
     });
 
     test("エラーが発生した場合", async () => {
-      // モックにエラーを設定
-      vi.mocked(fs.readdir).mockRejectedValue(new Error("Access denied"));
+      const mockFSAdapter: FSAdapter = {
+        readdir: vi.fn().mockRejectedValue(new Error("Access denied")),
+        readFile: vi.fn(),
+        writeFile: vi.fn(),
+      };
 
-      const result = await tools.listFile({ path: "/invalid", recursive: true });
+      const result = await tools.listFile({ path: "/invalid", recursive: true }, mockFSAdapter);
 
       expect(result.ok).toBe(false);
       if (!result.ok) {
@@ -100,23 +97,29 @@ describe("tools", () => {
 
   describe("readFile", () => {
     test("正常にファイル内容を読み込める場合", async () => {
-      // モックの戻り値を設定
-      vi.mocked(fs.readFile).mockResolvedValue("file content" as unknown as Buffer);
+      const mockFSAdapter: FSAdapter = {
+        readdir: vi.fn(),
+        readFile: vi.fn().mockResolvedValue("file content"),
+        writeFile: vi.fn(),
+      };
 
-      const result = await tools.readFile({ path: "test.txt" });
+      const result = await tools.readFile({ path: "test.txt" }, mockFSAdapter);
 
       expect(result.ok).toBe(true);
       if (result.ok) {
         expect(result.result).toBe("file content");
       }
-      expect(fs.readFile).toHaveBeenCalledWith("test.txt", "utf-8");
+      expect(mockFSAdapter.readFile).toHaveBeenCalledWith("test.txt", "utf-8");
     });
 
     test("エラーが発生した場合", async () => {
-      // モックにエラーを設定
-      vi.mocked(fs.readFile).mockRejectedValue(new Error("File not found"));
+      const mockFSAdapter: FSAdapter = {
+        readdir: vi.fn(),
+        readFile: vi.fn().mockRejectedValue(new Error("File not found")),
+        writeFile: vi.fn(),
+      };
 
-      const result = await tools.readFile({ path: "nonexistent.txt" });
+      const result = await tools.readFile({ path: "nonexistent.txt" }, mockFSAdapter);
 
       expect(result.ok).toBe(false);
       if (!result.ok) {
@@ -129,29 +132,41 @@ describe("tools", () => {
 
   describe("writeFile", () => {
     test("正常にファイルを書き込める場合", async () => {
-      // モックの戻り値を設定
-      vi.mocked(fs.writeFile).mockResolvedValue(undefined);
+      const mockFSAdapter: FSAdapter = {
+        readdir: vi.fn(),
+        readFile: vi.fn(),
+        writeFile: vi.fn().mockResolvedValue(undefined),
+      };
 
-      const result = await tools.writeFile({
-        path: "output.txt",
-        content: "Hello, world!",
-      });
+      const result = await tools.writeFile(
+        {
+          path: "output.txt",
+          content: "Hello, world!",
+        },
+        mockFSAdapter
+      );
 
       expect(result.ok).toBe(true);
       if (result.ok) {
         expect(result.result).toContain("Successfully wrote to output.txt");
       }
-      expect(fs.writeFile).toHaveBeenCalledWith("output.txt", "Hello, world!", "utf-8");
+      expect(mockFSAdapter.writeFile).toHaveBeenCalledWith("output.txt", "Hello, world!", "utf-8");
     });
 
     test("エラーが発生した場合", async () => {
-      // モックにエラーを設定
-      vi.mocked(fs.writeFile).mockRejectedValue(new Error("Permission denied"));
+      const mockFSAdapter: FSAdapter = {
+        readdir: vi.fn(),
+        readFile: vi.fn(),
+        writeFile: vi.fn().mockRejectedValue(new Error("Permission denied")),
+      };
 
-      const result = await tools.writeFile({
-        path: "/protected/file.txt",
-        content: "content",
-      });
+      const result = await tools.writeFile(
+        {
+          path: "/protected/file.txt",
+          content: "content",
+        },
+        mockFSAdapter
+      );
 
       expect(result.ok).toBe(false);
       if (!result.ok) {
