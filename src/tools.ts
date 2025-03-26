@@ -1,5 +1,6 @@
 import { exec } from "node:child_process";
 import { promisify } from "node:util";
+import { type FSAdapter, defaultFSAdapter } from "./lib/fsAdapter";
 import { logger } from "./lib/logger";
 import { failure, success } from "./lib/result";
 import type {
@@ -11,7 +12,6 @@ import type {
   ToolResult,
   WriteFileParams,
 } from "./types";
-import { FSAdapter, defaultFSAdapter } from "./lib/fsAdapter";
 
 const execAsync = promisify(exec);
 
@@ -20,7 +20,7 @@ const execAsync = promisify(exec);
  */
 export async function listFile(
   params: ListFileParams,
-  fsAdapter: FSAdapter = defaultFSAdapter
+  fsAdapter: FSAdapter = defaultFSAdapter,
 ): Promise<ToolResult> {
   try {
     const files = await fsAdapter.readdir(params.path, { recursive: params.recursive });
@@ -56,7 +56,7 @@ export async function listFile(
  */
 export async function readFile(
   params: ReadFileParams,
-  fsAdapter: FSAdapter = defaultFSAdapter
+  fsAdapter: FSAdapter = defaultFSAdapter,
 ): Promise<ToolResult> {
   try {
     const content = await fsAdapter.readFile(params.path, "utf-8");
@@ -75,7 +75,7 @@ export async function readFile(
  */
 export async function writeFile(
   params: WriteFileParams,
-  fsAdapter: FSAdapter = defaultFSAdapter
+  fsAdapter: FSAdapter = defaultFSAdapter,
 ): Promise<ToolResult> {
   try {
     await fsAdapter.writeFile(params.path, params.content, "utf-8");
@@ -113,7 +113,20 @@ export async function askQuestion(params: AskQuestionParams): Promise<ToolResult
  */
 export async function executeCommand(params: ExecuteCommandParams): Promise<ToolResult> {
   try {
-    logger.log(`\nExecute command:\n${params.command}`);
+    if (params.requiresApproval) {
+      logger.log(`\nExecute command?\n${params.command}`);
+      const answer = await new Promise<string>((resolve) => {
+        process.stdin.once("data", (data) => resolve(data.toString().trim()));
+      });
+      if (answer.toLowerCase() !== "y") {
+        return failure({
+          code: "COMMAND_CANCELLED",
+          message: "Command execution cancelled",
+        });
+      }
+    } else {
+      logger.log(`\nExecute command:\n${params.command}`);
+    }
     const { stdout, stderr } = await execAsync(params.command);
     return success(`Command output:\n${stdout}\n${stderr}`);
   } catch (error) {
