@@ -39,7 +39,10 @@ describe("tools", () => {
         writeFile: vi.fn(),
       };
 
-      const result = await tools.listFile({ path: "src", recursive: false }, mockFSAdapter);
+      const result = await tools.listFile(
+        { path: "src", recursive: false },
+        { fsAdapter: mockFSAdapter },
+      );
 
       expect(result.ok).toBe(true);
       if (result.ok) {
@@ -52,17 +55,24 @@ describe("tools", () => {
 
     test("エラーが発生した場合", async () => {
       const mockFSAdapter: FSAdapter = {
-        readdir: vi.fn().mockRejectedValue(new Error("Access denied")),
+        readdir: vi
+          .fn()
+          .mockRejectedValue(
+            new Error("ENOENT: no such file or directory, scandir '/invalid'"),
+          ),
         readFile: vi.fn(),
         writeFile: vi.fn(),
       };
 
-      const result = await tools.listFile({ path: "/invalid", recursive: true }, mockFSAdapter);
+      const result = await tools.listFile(
+        { path: "/invalid", recursive: true },
+        { fsAdapter: mockFSAdapter },
+      );
 
       expect(result.ok).toBe(false);
       if (!result.ok) {
         expect(result.error.message).toContain("Failed to list directory");
-        expect(result.error.message).toContain("Access denied");
+        expect(result.error.message).toContain("ENOENT: no such file or directory");
         expect(result.error.code).toBe("LIST_FILE_ERROR");
       }
     });
@@ -76,7 +86,7 @@ describe("tools", () => {
         writeFile: vi.fn(),
       };
 
-      const result = await tools.readFile({ path: "test.txt" }, mockFSAdapter);
+      const result = await tools.readFile({ path: "test.txt" }, { fsAdapter: mockFSAdapter });
 
       expect(result.ok).toBe(true);
       if (result.ok) {
@@ -88,16 +98,23 @@ describe("tools", () => {
     test("エラーが発生した場合", async () => {
       const mockFSAdapter: FSAdapter = {
         readdir: vi.fn(),
-        readFile: vi.fn().mockRejectedValue(new Error("File not found")),
+        readFile: vi
+          .fn()
+          .mockRejectedValue(
+            new Error("ENOENT: no such file or directory, open 'nonexistent.txt'"),
+          ),
         writeFile: vi.fn(),
       };
 
-      const result = await tools.readFile({ path: "nonexistent.txt" }, mockFSAdapter);
+      const result = await tools.readFile(
+        { path: "nonexistent.txt" },
+        { fsAdapter: mockFSAdapter },
+      );
 
       expect(result.ok).toBe(false);
       if (!result.ok) {
         expect(result.error.message).toContain("Failed to read file");
-        expect(result.error.message).toContain("File not found");
+        expect(result.error.message).toContain("ENOENT: no such file or directory");
         expect(result.error.code).toBe("READ_FILE_ERROR");
       }
     });
@@ -116,7 +133,7 @@ describe("tools", () => {
           path: "output.txt",
           content: "Hello, world!",
         },
-        mockFSAdapter,
+        { fsAdapter: mockFSAdapter },
       );
 
       expect(result.ok).toBe(true);
@@ -134,7 +151,11 @@ describe("tools", () => {
       const mockFSAdapter: FSAdapter = {
         readdir: vi.fn(),
         readFile: vi.fn(),
-        writeFile: vi.fn().mockRejectedValue(new Error("Permission denied")),
+        writeFile: vi
+          .fn()
+          .mockRejectedValue(
+            new Error("ENOENT: no such file or directory, open '/protected/file.txt'"),
+          ),
       };
 
       const result = await tools.writeFile(
@@ -142,13 +163,13 @@ describe("tools", () => {
           path: "/protected/file.txt",
           content: "content",
         },
-        mockFSAdapter,
+        { fsAdapter: mockFSAdapter },
       );
 
       expect(result.ok).toBe(false);
       if (!result.ok) {
         expect(result.error.message).toContain("Failed to write file");
-        expect(result.error.message).toContain("Permission denied");
+        expect(result.error.message).toContain("ENOENT: no such file or directory");
         expect(result.error.code).toBe("WRITE_FILE_ERROR");
       }
     });
@@ -164,7 +185,10 @@ describe("tools", () => {
           return process.stdin;
         });
 
-      const result = await tools.askQuestion({ question: "What is your name?" }, mockLogger);
+      const result = await tools.askQuestion(
+        { question: "What is your name?" },
+        { logger: mockLogger },
+      );
 
       expect(result.ok).toBe(true);
       if (result.ok) {
@@ -189,8 +213,7 @@ describe("tools", () => {
         {
           command: "ls -la",
         },
-        mockAdapter,
-        mockLogger,
+        { commandAdapter: mockAdapter, logger: mockLogger },
       );
 
       expect(result.ok).toBe(true);
@@ -209,8 +232,7 @@ describe("tools", () => {
         {
           command: "invalid-command",
         },
-        mockAdapter,
-        mockLogger,
+        { commandAdapter: mockAdapter, logger: mockLogger },
       );
 
       expect(result.ok).toBe(false);
