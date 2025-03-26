@@ -1,18 +1,12 @@
 import { failure, success } from "./lib/result";
 import * as tools from "./tools";
 import type {
-  AskQuestionParams,
-  CompleteParams,
-  ExecuteCommandParams,
-  ListFileParams,
-  ReadFileParams,
   Result,
   Tool,
   ToolError,
   ToolExecutionResult,
   ToolResult,
   ToolType,
-  WriteFileParams,
 } from "./types";
 
 /**
@@ -56,16 +50,7 @@ export function parseTool(response: string): Result<Tool, ToolError> {
     });
   }
 
-  const params = parseParams(toolType, content);
-
-  if (!params.ok) {
-    return params;
-  }
-
-  return success({
-    type: toolType,
-    params: params.result,
-  });
+  return parseParams(toolType, content);
 }
 
 /**
@@ -88,18 +73,7 @@ function isValidToolType(type: string | undefined): type is ToolType {
 /**
  * ツールのパラメータを解析する
  */
-function parseParams(
-  toolType: ToolType,
-  content: string | undefined,
-): Result<
-  | ListFileParams
-  | ReadFileParams
-  | WriteFileParams
-  | AskQuestionParams
-  | ExecuteCommandParams
-  | CompleteParams,
-  ToolError
-> {
+function parseParams(toolType: ToolType, content: string | undefined): Result<Tool, ToolError> {
   if (!content) {
     const errorMessages: Record<ToolType, string> = {
       list_file: "Missing path parameter for list_file tool",
@@ -130,8 +104,11 @@ function parseParams(
         }
 
         return success({
-          path: pathMatch[1],
-          recursive: recursiveMatch?.[1]?.toLowerCase() === "true",
+          type: "list_file",
+          params: {
+            path: pathMatch[1],
+            recursive: recursiveMatch?.[1]?.toLowerCase() === "true",
+          },
         });
       }
 
@@ -145,7 +122,10 @@ function parseParams(
           });
         }
 
-        return success({ path: readPathMatch[1] });
+        return success({
+          type: "read_file",
+          params: { path: readPathMatch[1] },
+        });
       }
 
       case "write_file": {
@@ -167,8 +147,11 @@ function parseParams(
         }
 
         return success({
-          path: writePathMatch[1],
-          content: contentMatch[1],
+          type: "write_file",
+          params: {
+            path: writePathMatch[1],
+            content: contentMatch[1],
+          },
         });
       }
 
@@ -182,7 +165,10 @@ function parseParams(
           });
         }
 
-        return success({ question: questionMatch[1] });
+        return success({
+          type: "ask_question",
+          params: { question: questionMatch[1] },
+        });
       }
 
       case "execute_command": {
@@ -196,7 +182,8 @@ function parseParams(
         }
 
         return success({
-          command: commandMatch[1],
+          type: "execute_command",
+          params: { command: commandMatch[1] },
         });
       }
 
@@ -212,14 +199,11 @@ function parseParams(
           });
         }
 
-        return success({ result: resultMatch[1] });
-      }
-
-      default:
-        return failure({
-          message: `Unknown tool type: ${toolType}`,
-          code: "INVALID_TOOL_TYPE",
+        return success({
+          type: "complete",
+          params: { result: resultMatch[1] },
         });
+      }
     }
   } catch (error) {
     return failure({
@@ -236,21 +220,16 @@ function parseParams(
 async function executeTool(tool: Tool): Promise<ToolResult> {
   switch (tool.type) {
     case "list_file":
-      return tools.listFile(tool.params as ListFileParams);
+      return tools.listFile(tool.params);
     case "read_file":
-      return tools.readFile(tool.params as ReadFileParams);
+      return tools.readFile(tool.params);
     case "write_file":
-      return tools.writeFile(tool.params as WriteFileParams);
+      return tools.writeFile(tool.params);
     case "ask_question":
-      return tools.askQuestion(tool.params as AskQuestionParams);
+      return tools.askQuestion(tool.params);
     case "execute_command":
-      return tools.executeCommand(tool.params as ExecuteCommandParams);
+      return tools.executeCommand(tool.params);
     case "complete":
-      return tools.complete(tool.params as CompleteParams);
-    default:
-      return failure({
-        message: `Unknown tool type: ${tool.type}`,
-        code: "INVALID_TOOL_TYPE",
-      });
+      return tools.complete(tool.params);
   }
 }

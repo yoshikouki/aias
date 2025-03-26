@@ -49,16 +49,13 @@ export type ToolType =
   | "execute_command"
   | "complete";
 
-export interface Tool {
-  type: ToolType;
-  params:
-    | ListFileParams
-    | ReadFileParams
-    | WriteFileParams
-    | AskQuestionParams
-    | ExecuteCommandParams
-    | CompleteParams;
-}
+export type Tool =
+  | { type: "list_file"; params: ListFileParams }
+  | { type: "read_file"; params: ReadFileParams }
+  | { type: "write_file"; params: WriteFileParams }
+  | { type: "ask_question"; params: AskQuestionParams }
+  | { type: "execute_command"; params: ExecuteCommandParams }
+  | { type: "complete"; params: CompleteParams };
 
 export interface ToolExecutionResult {
   toolResult: ToolResult;

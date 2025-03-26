@@ -10,6 +10,7 @@
     "format:unsafe": "biome check --write --unsafe .",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:build": "tsc --noEmit",
     "update:all": "bun update --latest"
   },
   "dependencies": {
