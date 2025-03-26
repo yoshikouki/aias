@@ -44,13 +44,17 @@ alwaysApply: true
 ### 型定義
 
 ```typescript
-// ブランデッド型で型安全性を確保
-type Branded<T, B> = T & { _brand: B };
-type Money = Branded<number, "Money">;
-type Email = Branded<string, "Email">;
+// ユニオン型で型安全性を確保
+type Tool =
+  | { type: "list_file"; params: ListFileParams }
+  | { type: "read_file"; params: ReadFileParams }
+  | { type: "write_file"; params: WriteFileParams }
+  | { type: "ask_question"; params: AskQuestionParams }
+  | { type: "execute_command"; params: ExecuteCommandParams }
+  | { type: "complete"; params: CompleteParams };
 ```
 
-### ユニオン型によるエラーハンドリング
+### リザルト型によるエラーハンドリング
 
 ```typescript
 // 成功と失敗を表現するユニオン型
@@ -60,7 +64,7 @@ type Result<T, E> = Success<T> | Failure<E>;
 ```
 
 - 成功/失敗を明示
-- 早期リターンパターンを使用
+- ガード節による早期リターンパターンを使用
 - エラー型を定義
 
 ### アダプターパターン
