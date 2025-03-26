@@ -1,7 +1,6 @@
-import { exec } from "node:child_process";
-import { promisify } from "node:util";
+import { type CommandAdapter, NodeCommandAdapter } from "./lib/commandAdapter";
 import { type FSAdapter, defaultFSAdapter } from "./lib/fsAdapter";
-import { logger } from "./lib/logger";
+import { type Logger, logger as defaultLogger } from "./lib/logger";
 import { failure, success } from "./lib/result";
 import type {
   AskQuestionParams,
@@ -13,16 +12,28 @@ import type {
   WriteFileParams,
 } from "./types";
 
-const execAsync = promisify(exec);
+interface Dependencies {
+  logger?: Logger;
+  fsAdapter?: FSAdapter;
+  commandAdapter?: CommandAdapter;
+}
+
+const defaultDeps = {
+  logger: defaultLogger,
+  fsAdapter: defaultFSAdapter,
+  commandAdapter: new NodeCommandAdapter(),
+} as const;
 
 /**
  * ディレクトリ内のファイル一覧を取得する
  */
 export async function listFile(
   params: ListFileParams,
-  fsAdapter: FSAdapter = defaultFSAdapter,
+  deps: Partial<Dependencies> = {},
 ): Promise<ToolResult> {
+  const { logger, fsAdapter } = { ...defaultDeps, ...deps };
   try {
+    logger.log(`\nListing directory: ${params.path}`);
     const files = await fsAdapter.readdir(params.path, { recursive: params.recursive });
     // ファイル配列をフォーマットして一覧表示
     const filesStr = files
@@ -56,9 +67,11 @@ export async function listFile(
  */
 export async function readFile(
   params: ReadFileParams,
-  fsAdapter: FSAdapter = defaultFSAdapter,
+  deps: Partial<Dependencies> = {},
 ): Promise<ToolResult> {
+  const { logger, fsAdapter } = { ...defaultDeps, ...deps };
   try {
+    logger.log(`\nReading file: ${params.path}`);
     const content = await fsAdapter.readFile(params.path, "utf-8");
     return success(content);
   } catch (error) {
@@ -75,9 +88,11 @@ export async function readFile(
  */
 export async function writeFile(
   params: WriteFileParams,
-  fsAdapter: FSAdapter = defaultFSAdapter,
+  deps: Partial<Dependencies> = {},
 ): Promise<ToolResult> {
+  const { logger, fsAdapter } = { ...defaultDeps, ...deps };
   try {
+    logger.log(`\nWriting to file: ${params.path}`);
     await fsAdapter.writeFile(params.path, params.content, "utf-8");
     return success(`Successfully wrote to ${params.path}`);
   } catch (error) {
@@ -92,7 +107,11 @@ export async function writeFile(
 /**
  * ユーザーに質問を投げかけ、回答を取得する
  */
-export async function askQuestion(params: AskQuestionParams): Promise<ToolResult> {
+export async function askQuestion(
+  params: AskQuestionParams,
+  deps: Partial<Dependencies> = {},
+): Promise<ToolResult> {
+  const { logger } = { ...defaultDeps, ...deps };
   try {
     logger.log(`\nQuestion: ${params.question}`);
     const answer = await new Promise<string>((resolve) => {
@@ -111,10 +130,14 @@ export async function askQuestion(params: AskQuestionParams): Promise<ToolResult
 /**
  * コマンドを実行する
  */
-export async function executeCommand(params: ExecuteCommandParams): Promise<ToolResult> {
+export async function executeCommand(
+  params: ExecuteCommandParams,
+  deps: Partial<Dependencies> = {},
+): Promise<ToolResult> {
+  const { logger, commandAdapter } = { ...defaultDeps, ...deps };
   try {
     logger.log(`\nExecute command:\n${params.command}`);
-    const { stdout, stderr } = await execAsync(params.command);
+    const { stdout, stderr } = await commandAdapter.execute(params.command);
     return success(`Command output:\n${stdout}\n${stderr}`);
   } catch (error) {
     return failure({

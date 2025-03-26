@@ -1,76 +1,29 @@
-import { exec } from "node:child_process";
 import type { Dirent } from "node:fs";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
+import { MockCommandAdapter } from "./lib/commandAdapter";
 import type { FSAdapter } from "./lib/fsAdapter";
-import * as loggerModule from "./lib/logger";
 import { createMockLogger } from "./lib/test-utils";
 import * as tools from "./tools";
 
-type ExecCallback = (error: Error | null, stdout: string, stderr: string) => void;
-type ExecOptions = {
-  encoding?: string | null;
-  maxBuffer?: number;
-  shell?: string;
-  signal?: AbortSignal;
-  timeout?: number;
-  windowsHide?: boolean;
-};
-
-// exec関数のモック
-vi.mock("node:child_process", () => {
-  return {
-    exec: vi
-      .fn()
-      .mockImplementation(
-        (
-          _cmd: string,
-          options: ExecOptions | ExecCallback | null | undefined,
-          callback?: ExecCallback,
-        ) => {
-          // 3番目の引数がコールバックの場合
-          if (typeof callback === "function") {
-            callback(null, "mocked stdout", "");
-          }
-          // 2番目の引数がコールバックの場合
-          else if (typeof options === "function") {
-            options(null, "mocked stdout", "");
-          }
-          return {} as ReturnType<typeof exec>;
-        },
-      ),
-  };
-});
-
 // logger モジュールのモック
-vi.mock("./lib/logger", () => {
-  const mockLogger = {
+vi.mock("./lib/logger", () => ({
+  createMockLogger: vi.fn(),
+  logger: {
     log: vi.fn(),
     error: vi.fn(),
-  };
-  return {
-    logger: mockLogger,
-    createConsoleLogger: vi.fn().mockReturnValue(mockLogger),
-    createSilentLogger: vi.fn().mockReturnValue(mockLogger),
-    createInMemoryLogger: vi.fn().mockReturnValue(mockLogger),
-  };
-});
+  },
+}));
 
 describe("tools", () => {
   let mockLogger: ReturnType<typeof createMockLogger>;
 
   beforeEach(() => {
-    vi.resetAllMocks();
-    // モックロガーを作成
     mockLogger = createMockLogger();
-    // loggerモジュールのloggerをモックロガーで上書き
-    Object.defineProperty(loggerModule, "logger", {
-      value: mockLogger,
-      writable: true,
-    });
+    vi.clearAllMocks();
   });
 
   afterEach(() => {
-    vi.restoreAllMocks();
+    vi.resetAllMocks();
   });
 
   describe("listFile", () => {
@@ -211,7 +164,7 @@ describe("tools", () => {
           return process.stdin;
         });
 
-      const result = await tools.askQuestion({ question: "What is your name?" });
+      const result = await tools.askQuestion({ question: "What is your name?" }, mockLogger);
 
       expect(result.ok).toBe(true);
       if (result.ok) {
@@ -227,29 +180,18 @@ describe("tools", () => {
 
   describe("executeCommand", () => {
     test("コマンドが正常に実行されること", async () => {
-      // execをスタブ化して特定の戻り値を設定
-      vi.mocked(exec).mockImplementation(
-        (
-          _cmd: string,
-          options: ExecOptions | ExecCallback | null | undefined,
-          callback?: ExecCallback,
-        ) => {
-          const execCallback =
-            typeof callback === "function"
-              ? callback
-              : typeof options === "function"
-                ? options
-                : null;
-          if (execCallback) {
-            execCallback(null, "command output", "");
-          }
-          return {} as ReturnType<typeof exec>;
-        },
-      );
-
-      const result = await tools.executeCommand({
-        command: "ls -la",
+      const mockAdapter = new MockCommandAdapter({
+        stdout: "command output",
+        stderr: "stderr output",
       });
+
+      const result = await tools.executeCommand(
+        {
+          command: "ls -la",
+        },
+        mockAdapter,
+        mockLogger,
+      );
 
       expect(result.ok).toBe(true);
       if (result.ok) {
@@ -260,29 +202,16 @@ describe("tools", () => {
     });
 
     test("コマンド実行でエラーが発生した場合", async () => {
-      // execをスタブ化してエラーを返すように設定
-      vi.mocked(exec).mockImplementation(
-        (
-          _cmd: string,
-          options: ExecOptions | ExecCallback | null | undefined,
-          callback?: ExecCallback,
-        ) => {
-          const execCallback =
-            typeof callback === "function"
-              ? callback
-              : typeof options === "function"
-                ? options
-                : null;
-          if (execCallback) {
-            execCallback(new Error("Command failed"), "", "error output");
-          }
-          return {} as ReturnType<typeof exec>;
-        },
-      );
+      const mockAdapter = new MockCommandAdapter();
+      vi.spyOn(mockAdapter, "execute").mockRejectedValue(new Error("Command failed"));
 
-      const result = await tools.executeCommand({
-        command: "invalid-command",
-      });
+      const result = await tools.executeCommand(
+        {
+          command: "invalid-command",
+        },
+        mockAdapter,
+        mockLogger,
+      );
 
       expect(result.ok).toBe(false);
       if (!result.ok) {
