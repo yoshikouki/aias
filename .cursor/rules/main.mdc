@@ -111,6 +111,7 @@ type Result<T, E> = Success<T> | Failure<E>;
 - モックによる外部依存のテスト
 - テスト可能性を設計に組み込む
 - アサートファースト：期待結果から逆算
+- テスト実行は `bun run test` で実行する
 
 ### テストが落ちた時
 
@@ -239,14 +240,14 @@ ref/             # 参考資料置き場
 
 1. **静的解析・型チェック**:
   - TypeScriptコンパイラ
-  - ESLint
+  - Biome
 
 2. **デッドコード検出・削除**:
-  - ESLintのno-unused-varsルール
+  - Biomeのno-unused-varsルール
   - TypeScriptのunused-varsオプション
 
 3. **コードカバレッジ測定**:
-  - Jestやvitestのカバレッジオプション
+  - vitestのカバレッジオプション
 
 4. **Gitによるバージョン管理**:
   - 各フェーズ（テスト作成→実装→リファクタリング）の完了時にコミット
