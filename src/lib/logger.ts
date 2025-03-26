@@ -19,7 +19,7 @@ export const createConsoleLogger = (): Logger => ({
     } else {
       console.error(message);
     }
-  }
+  },
 });
 
 /**
@@ -31,16 +31,19 @@ export const createSilentLogger = (): Logger => ({
   },
   error(_message: string, _error?: unknown): void {
     // エラーログ出力しない
-  }
+  },
 });
 
 /**
  * テスト用のインメモリロガー実装
  */
-export const createInMemoryLogger = (): Logger & { messages: string[], errors: Array<{ message: string, error?: unknown }> } => {
+export const createInMemoryLogger = (): Logger & {
+  messages: string[];
+  errors: Array<{ message: string; error?: unknown }>;
+} => {
   const messages: string[] = [];
-  const errors: Array<{ message: string, error?: unknown }> = [];
-  
+  const errors: Array<{ message: string; error?: unknown }> = [];
+
   return {
     messages,
     errors,
@@ -49,7 +52,7 @@ export const createInMemoryLogger = (): Logger & { messages: string[], errors: A
     },
     error(message: string, error?: unknown): void {
       errors.push({ message, error });
-    }
+    },
   };
 };
 

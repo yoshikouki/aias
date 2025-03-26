@@ -1,10 +1,14 @@
-import { createSilentLogger, createInMemoryLogger } from "./logger";
+import { createInMemoryLogger, createSilentLogger } from "./logger";
 import type { Logger } from "./logger";
 
 /**
  * テスト用にロガーをモックするユーティリティ
  */
-export const createMockLogger = (): Logger & { logs: string[], errors: string[], clear: () => void } => {
+export const createMockLogger = (): Logger & {
+  logs: string[];
+  errors: string[];
+  clear: () => void;
+} => {
   const logs: string[] = [];
   const errors: string[] = [];
 
@@ -24,7 +28,7 @@ export const createMockLogger = (): Logger & { logs: string[], errors: string[],
     clear(): void {
       logs.length = 0;
       errors.length = 0;
-    }
+    },
   };
 };
 

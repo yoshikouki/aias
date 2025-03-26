@@ -1,25 +1,43 @@
 import { exec } from "node:child_process";
 import type { Dirent } from "node:fs";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
+import type { FSAdapter } from "./lib/fsAdapter";
 import * as loggerModule from "./lib/logger";
 import { createMockLogger } from "./lib/test-utils";
 import * as tools from "./tools";
-import { FSAdapter } from "./lib/fsAdapter";
+
+type ExecCallback = (error: Error | null, stdout: string, stderr: string) => void;
+type ExecOptions = {
+  encoding?: string | null;
+  maxBuffer?: number;
+  shell?: string;
+  signal?: AbortSignal;
+  timeout?: number;
+  windowsHide?: boolean;
+};
 
 // exec関数のモック
 vi.mock("node:child_process", () => {
   return {
-    exec: vi.fn().mockImplementation((cmd, options, callback) => {
-      // 3番目の引数がコールバックの場合
-      if (typeof callback === "function") {
-        callback(null, { stdout: "mocked stdout", stderr: "" });
-      }
-      // 2番目の引数がコールバックの場合
-      else if (typeof options === "function") {
-        options(null, { stdout: "mocked stdout", stderr: "" });
-      }
-      return {} as any;
-    }),
+    exec: vi
+      .fn()
+      .mockImplementation(
+        (
+          _cmd: string,
+          options: ExecOptions | ExecCallback | null | undefined,
+          callback?: ExecCallback,
+        ) => {
+          // 3番目の引数がコールバックの場合
+          if (typeof callback === "function") {
+            callback(null, "mocked stdout", "");
+          }
+          // 2番目の引数がコールバックの場合
+          else if (typeof options === "function") {
+            options(null, "mocked stdout", "");
+          }
+          return {} as ReturnType<typeof exec>;
+        },
+      ),
   };
 });
 
@@ -58,10 +76,12 @@ describe("tools", () => {
   describe("listFile", () => {
     test("正常にファイル一覧を取得できる場合", async () => {
       const mockFSAdapter: FSAdapter = {
-        readdir: vi.fn().mockResolvedValue([
-          { name: "file1.txt", isFile: () => true } as unknown as Dirent,
-          { name: "file2.txt", isFile: () => true } as unknown as Dirent,
-        ]),
+        readdir: vi
+          .fn()
+          .mockResolvedValue([
+            { name: "file1.txt", isFile: () => true } as unknown as Dirent,
+            { name: "file2.txt", isFile: () => true } as unknown as Dirent,
+          ]),
         readFile: vi.fn(),
         writeFile: vi.fn(),
       };
@@ -143,14 +163,18 @@ describe("tools", () => {
           path: "output.txt",
           content: "Hello, world!",
         },
-        mockFSAdapter
+        mockFSAdapter,
       );
 
       expect(result.ok).toBe(true);
       if (result.ok) {
         expect(result.result).toContain("Successfully wrote to output.txt");
       }
-      expect(mockFSAdapter.writeFile).toHaveBeenCalledWith("output.txt", "Hello, world!", "utf-8");
+      expect(mockFSAdapter.writeFile).toHaveBeenCalledWith(
+        "output.txt",
+        "Hello, world!",
+        "utf-8",
+      );
     });
 
     test("エラーが発生した場合", async () => {
@@ -165,7 +189,7 @@ describe("tools", () => {
           path: "/protected/file.txt",
           content: "content",
         },
-        mockFSAdapter
+        mockFSAdapter,
       );
 
       expect(result.ok).toBe(false);
@@ -182,7 +206,7 @@ describe("tools", () => {
       // process.stdin.onceをスパイして、コールバックを直接実行
       const onceSpy = vi
         .spyOn(process.stdin, "once")
-        .mockImplementation((event: string, callback: (data: Buffer) => void) => {
+        .mockImplementation((_event: string, callback: (data: Buffer) => void) => {
           callback(Buffer.from("user answer"));
           return process.stdin;
         });
@@ -206,21 +230,30 @@ describe("tools", () => {
       // process.stdin.onceをスパイ
       const onceSpy = vi
         .spyOn(process.stdin, "once")
-        .mockImplementation((event: string, callback: (data: Buffer) => void) => {
+        .mockImplementation((_event: string, callback: (data: Buffer) => void) => {
           callback(Buffer.from("y"));
           return process.stdin;
         });
 
       // execをスタブ化して特定の戻り値を設定
-      vi.mocked(exec).mockImplementation((...args: any[]) => {
-        // コールバックが渡されている場合、それを実行
-        const callback =
-          args.length === 3 ? args[2] : typeof args[1] === "function" ? args[1] : null;
-        if (callback) {
-          callback(null, { stdout: "command output", stderr: "" });
-        }
-        return {} as any;
-      });
+      vi.mocked(exec).mockImplementation(
+        (
+          _cmd: string,
+          options: ExecOptions | ExecCallback | null | undefined,
+          callback?: ExecCallback,
+        ) => {
+          const execCallback =
+            typeof callback === "function"
+              ? callback
+              : typeof options === "function"
+                ? options
+                : null;
+          if (execCallback) {
+            execCallback(null, "command output", "");
+          }
+          return {} as ReturnType<typeof exec>;
+        },
+      );
 
       const result = await tools.executeCommand({
         command: "ls -la",
@@ -242,7 +275,7 @@ describe("tools", () => {
       // process.stdin.onceをスパイ
       const onceSpy = vi
         .spyOn(process.stdin, "once")
-        .mockImplementation((event: string, callback: (data: Buffer) => void) => {
+        .mockImplementation((_event: string, callback: (data: Buffer) => void) => {
           callback(Buffer.from("n"));
           return process.stdin;
         });
@@ -264,15 +297,24 @@ describe("tools", () => {
 
     test("承認が不要な場合は直接実行される", async () => {
       // execをスタブ化して特定の戻り値を設定
-      vi.mocked(exec).mockImplementation((...args: any[]) => {
-        // コールバックが渡されている場合、それを実行
-        const callback =
-          args.length === 3 ? args[2] : typeof args[1] === "function" ? args[1] : null;
-        if (callback) {
-          callback(null, { stdout: "command result", stderr: "" });
-        }
-        return {} as any;
-      });
+      vi.mocked(exec).mockImplementation(
+        (
+          _cmd: string,
+          options: ExecOptions | ExecCallback | null | undefined,
+          callback?: ExecCallback,
+        ) => {
+          const execCallback =
+            typeof callback === "function"
+              ? callback
+              : typeof options === "function"
+                ? options
+                : null;
+          if (execCallback) {
+            execCallback(null, "command result", "");
+          }
+          return {} as ReturnType<typeof exec>;
+        },
+      );
 
       const result = await tools.executeCommand({
         command: "echo hello",
@@ -289,15 +331,24 @@ describe("tools", () => {
 
     test("コマンド実行でエラーが発生した場合", async () => {
       // execをスタブ化してエラーを返すように設定
-      vi.mocked(exec).mockImplementation((...args: any[]) => {
-        // コールバックが渡されている場合、それを実行
-        const callback =
-          args.length === 3 ? args[2] : typeof args[1] === "function" ? args[1] : null;
-        if (callback) {
-          callback(new Error("Command failed"), { stdout: "", stderr: "error output" });
-        }
-        return {} as any;
-      });
+      vi.mocked(exec).mockImplementation(
+        (
+          _cmd: string,
+          options: ExecOptions | ExecCallback | null | undefined,
+          callback?: ExecCallback,
+        ) => {
+          const execCallback =
+            typeof callback === "function"
+              ? callback
+              : typeof options === "function"
+                ? options
+                : null;
+          if (execCallback) {
+            execCallback(new Error("Command failed"), "", "error output");
+          }
+          return {} as ReturnType<typeof exec>;
+        },
+      );
 
       const result = await tools.executeCommand({
         command: "invalid-command",
