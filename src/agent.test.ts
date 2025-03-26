@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { CodingAgent } from "./agent";
-import type { AIProvider, Message } from "./agent";
+import type { AIProvider, Message } from "./features/ai-provider";
 import * as loggerModule from "./lib/logger";
 import { failure, success } from "./lib/result";
 import { createMockLogger } from "./lib/test-utils";
@@ -35,6 +35,7 @@ describe("CodingAgent", () => {
   let mockAIProvider: MockAIProvider;
   let agent: CodingAgent;
   let mockLogger: ReturnType<typeof createMockLogger>;
+  const originalEnv = process.env;
 
   beforeEach(() => {
     vi.resetAllMocks();
@@ -48,10 +49,14 @@ describe("CodingAgent", () => {
       value: mockLogger,
       writable: true,
     });
+
+    // 環境変数をリセット
+    process.env = { ...originalEnv };
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
+    process.env = originalEnv;
   });
 
   test("タスクを開始するとAIに初期メッセージが送信されること", async () => {
@@ -226,9 +231,6 @@ describe("CodingAgent", () => {
     expect(userMessages).toContain(firstToolResult);
     expect(userMessages).toContain(secondToolResult);
 
-    // 実際の挙動では、最後の結果はメッセージに追加されていない
-    // (デバッグログから確認)
-
     // パーサーが正しく呼び出されたことを確認
     expect(mockedParser).toHaveBeenNthCalledWith(1, "<tool1></tool1>");
     expect(mockedParser).toHaveBeenNthCalledWith(2, "<tool2></tool2>");
@@ -238,5 +240,68 @@ describe("CodingAgent", () => {
     expect(mockLogger.logs).toContainEqual(expect.stringContaining(firstResult));
     expect(mockLogger.logs).toContainEqual(expect.stringContaining(secondResult));
     expect(mockLogger.logs).toContainEqual(expect.stringContaining(finalResult));
+  });
+
+  describe("ファクトリーメソッド", () => {
+    test("fromAnthropicApiKeyでレートリミット付きのエージェントを作成できること", () => {
+      const rateLimitConfig = {
+        maxRequests: 10,
+        windowMs: 60000,
+      };
+      const rateLimitKey = "test-user";
+
+      const agent = CodingAgent.fromAnthropicApiKey(
+        "test-api-key",
+        rateLimitConfig,
+        rateLimitKey,
+      );
+
+      expect(agent).toBeInstanceOf(CodingAgent);
+    });
+
+    test("fromGoogleApiKeyでレートリミット付きのエージェントを作成できること", () => {
+      const rateLimitConfig = {
+        maxRequests: 10,
+        windowMs: 60000,
+      };
+      const rateLimitKey = "test-user";
+
+      const agent = CodingAgent.fromGoogleApiKey("test-api-key", rateLimitConfig, rateLimitKey);
+
+      expect(agent).toBeInstanceOf(CodingAgent);
+    });
+
+    test("レートリミット設定なしでエージェントを作成できること", () => {
+      const agent = CodingAgent.fromAnthropicApiKey("test-api-key");
+      expect(agent).toBeInstanceOf(CodingAgent);
+    });
+
+    describe("fromEnv", () => {
+      test("環境変数から設定を読み込んでエージェントを作成できること", () => {
+        process.env.AI_API_KEY = "test-api-key";
+        process.env.AI_MODEL = "test-model";
+        process.env.AI_TEMPERATURE = "0.7";
+
+        const agent = CodingAgent.fromEnv("anthropic");
+        expect(agent).toBeInstanceOf(CodingAgent);
+      });
+
+      test("レートリミットの設定も読み込めること", () => {
+        process.env.AI_API_KEY = "test-api-key";
+        process.env.AI_RATE_LIMIT_MAX_REQUESTS = "10";
+        process.env.AI_RATE_LIMIT_WINDOW_MS = "60000";
+        process.env.AI_RATE_LIMIT_KEY = "test-user";
+
+        const agent = CodingAgent.fromEnv("anthropic");
+        expect(agent).toBeInstanceOf(CodingAgent);
+      });
+
+      test("必須の環境変数が設定されていない場合はエラーを投げること", () => {
+        delete process.env.AI_API_KEY;
+        expect(() => CodingAgent.fromEnv("anthropic")).toThrow(
+          "AI_API_KEY environment variable is required",
+        );
+      });
+    });
   });
 });

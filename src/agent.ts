@@ -1,71 +1,14 @@
-import { createAnthropic } from "@ai-sdk/anthropic";
-import { createGoogleGenerativeAI } from "@ai-sdk/google";
-import { generateText } from "ai";
+import {
+  type AIProvider,
+  type Message,
+  createAIProvider,
+  createRateLimitedAIProvider,
+  loadAIProviderConfig,
+} from "./features/ai-provider";
+import type { RateLimitConfig } from "./features/rate-limit/types";
 import { logger } from "./lib/logger";
 import { parseAndExecuteTool } from "./parser";
 import type { ToolResult } from "./types";
-
-/**
- * AIプロバイダーを抽象化するアダプター
- */
-export interface AIProvider {
-  generateResponse(messages: Message[]): Promise<string>;
-}
-
-/**
- * メッセージの型定義
- */
-export type Role = "user" | "assistant";
-export interface Message {
-  role: Role;
-  content: string;
-}
-
-/**
- * Anthropicを利用したAIプロバイダーの実装
- */
-export class AnthropicProvider implements AIProvider {
-  private anthropic: ReturnType<typeof createAnthropic>;
-  private model: string;
-
-  constructor(apiKey: string, model = "claude-3-7-sonnet-20250219") {
-    this.anthropic = createAnthropic({ apiKey });
-    this.model = model;
-  }
-
-  async generateResponse(messages: Message[]): Promise<string> {
-    const response = await generateText({
-      model: this.anthropic(this.model),
-      messages,
-      temperature: 0.7,
-    });
-
-    return response.text;
-  }
-}
-
-/**
- * Google AI (Gemini) を利用したAIプロバイダーの実装
- */
-export class GoogleAIProvider implements AIProvider {
-  private google: ReturnType<typeof createGoogleGenerativeAI>;
-  private model: string;
-
-  constructor(apiKey: string, model = "gemini-2.0-flash") {
-    this.google = createGoogleGenerativeAI({ apiKey });
-    this.model = model;
-  }
-
-  async generateResponse(messages: Message[]): Promise<string> {
-    const response = await generateText({
-      model: this.google(this.model),
-      messages,
-      temperature: 0.7,
-    });
-
-    return response.text;
-  }
-}
 
 const systemPrompt = `You are a coding agent. Use the following tools to complete tasks:
 
@@ -115,12 +58,9 @@ Always use one of the above tools. Do not respond directly without using a tool.
  * コーディングエージェントを実装
  */
 export class CodingAgent {
-  private aiProvider: AIProvider;
   private messages: Message[] = [];
 
-  constructor(aiProvider: AIProvider) {
-    this.aiProvider = aiProvider;
-  }
+  constructor(private readonly aiProvider: AIProvider) {}
 
   /**
    * タスクを開始する
@@ -168,16 +108,45 @@ export class CodingAgent {
   /**
    * ファクトリーメソッド: Anthropic APIキーからエージェントを作成
    */
-  static fromAnthropicApiKey(apiKey: string): CodingAgent {
-    const provider = new AnthropicProvider(apiKey);
-    return new CodingAgent(provider);
+  static fromAnthropicApiKey(
+    apiKey: string,
+    rateLimitConfig?: RateLimitConfig,
+    rateLimitKey?: string,
+  ): CodingAgent {
+    const provider = createAIProvider("anthropic", { apiKey });
+    const finalProvider =
+      rateLimitConfig && rateLimitKey
+        ? createRateLimitedAIProvider(provider, rateLimitConfig, rateLimitKey)
+        : provider;
+    return new CodingAgent(finalProvider);
   }
 
   /**
    * ファクトリーメソッド: Google AI APIキーからエージェントを作成
    */
-  static fromGoogleApiKey(apiKey: string): CodingAgent {
-    const provider = new GoogleAIProvider(apiKey);
-    return new CodingAgent(provider);
+  static fromGoogleApiKey(
+    apiKey: string,
+    rateLimitConfig?: RateLimitConfig,
+    rateLimitKey?: string,
+  ): CodingAgent {
+    const provider = createAIProvider("google", { apiKey });
+    const finalProvider =
+      rateLimitConfig && rateLimitKey
+        ? createRateLimitedAIProvider(provider, rateLimitConfig, rateLimitKey)
+        : provider;
+    return new CodingAgent(finalProvider);
+  }
+
+  /**
+   * ファクトリーメソッド: 環境変数から設定を読み込んでエージェントを作成
+   */
+  static fromEnv(type: "anthropic" | "google"): CodingAgent {
+    const config = loadAIProviderConfig();
+    const provider = createAIProvider(type, config);
+    const finalProvider =
+      config.rateLimit && config.rateLimitKey
+        ? createRateLimitedAIProvider(provider, config.rateLimit, config.rateLimitKey)
+        : provider;
+    return new CodingAgent(finalProvider);
   }
 }
