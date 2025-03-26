@@ -187,7 +187,6 @@ function parseParams(
 
       case "execute_command": {
         const commandMatch = content.match(/<command>(.*?)<\/command>/);
-        const approvalMatch = content.match(/<requires_approval>(.*?)<\/requires_approval>/);
 
         if (!commandMatch || !commandMatch[1]) {
           return failure({
@@ -198,9 +197,6 @@ function parseParams(
 
         return success({
           command: commandMatch[1],
-          requiresApproval: approvalMatch?.[1]
-            ? approvalMatch[1].toLowerCase() === "true"
-            : true,
         });
       }
 

@@ -35,7 +35,6 @@ export interface AskQuestionParams {
 
 export interface ExecuteCommandParams {
   command: string;
-  requiresApproval: boolean;
 }
 
 export interface CompleteParams {

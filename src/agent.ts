@@ -101,7 +101,6 @@ Ask a question to the user.
 Execute a command.
 <execute_command>
 <command>command to execute</command>
-<requires_approval>true or false</requires_approval>
 </execute_command>
 
 # Complete

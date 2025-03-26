@@ -226,15 +226,7 @@ describe("tools", () => {
   });
 
   describe("executeCommand", () => {
-    test("承認が必要でユーザーが承認した場合", async () => {
-      // process.stdin.onceをスパイ
-      const onceSpy = vi
-        .spyOn(process.stdin, "once")
-        .mockImplementation((_event: string, callback: (data: Buffer) => void) => {
-          callback(Buffer.from("y"));
-          return process.stdin;
-        });
-
+    test("コマンドが正常に実行されること", async () => {
       // execをスタブ化して特定の戻り値を設定
       vi.mocked(exec).mockImplementation(
         (
@@ -257,7 +249,6 @@ describe("tools", () => {
 
       const result = await tools.executeCommand({
         command: "ls -la",
-        requiresApproval: true,
       });
 
       expect(result.ok).toBe(true);
@@ -265,68 +256,7 @@ describe("tools", () => {
         expect(result.result).toContain("command output");
       }
       // ロガーにメッセージが記録されていることを確認
-      expect(mockLogger.logs).toContainEqual(expect.stringContaining("Execute command?"));
-      expect(onceSpy).toHaveBeenCalledWith("data", expect.any(Function));
-
-      onceSpy.mockRestore();
-    });
-
-    test("承認が必要でユーザーが拒否した場合", async () => {
-      // process.stdin.onceをスパイ
-      const onceSpy = vi
-        .spyOn(process.stdin, "once")
-        .mockImplementation((_event: string, callback: (data: Buffer) => void) => {
-          callback(Buffer.from("n"));
-          return process.stdin;
-        });
-
-      const result = await tools.executeCommand({
-        command: "rm -rf /",
-        requiresApproval: true,
-      });
-
-      expect(result.ok).toBe(false);
-      if (!result.ok) {
-        expect(result.error.message).toContain("Command execution cancelled");
-        expect(result.error.code).toBe("COMMAND_CANCELLED");
-      }
-      expect(onceSpy).toHaveBeenCalledWith("data", expect.any(Function));
-
-      onceSpy.mockRestore();
-    });
-
-    test("承認が不要な場合は直接実行される", async () => {
-      // execをスタブ化して特定の戻り値を設定
-      vi.mocked(exec).mockImplementation(
-        (
-          _cmd: string,
-          options: ExecOptions | ExecCallback | null | undefined,
-          callback?: ExecCallback,
-        ) => {
-          const execCallback =
-            typeof callback === "function"
-              ? callback
-              : typeof options === "function"
-                ? options
-                : null;
-          if (execCallback) {
-            execCallback(null, "command result", "");
-          }
-          return {} as ReturnType<typeof exec>;
-        },
-      );
-
-      const result = await tools.executeCommand({
-        command: "echo hello",
-        requiresApproval: false,
-      });
-
-      expect(result.ok).toBe(true);
-      if (result.ok) {
-        expect(result.result).toContain("command result");
-      }
-      // 承認プロンプトが表示されていないことを確認
-      expect(mockLogger.logs).not.toContainEqual(expect.stringContaining("Execute command?"));
+      expect(mockLogger.logs).toContainEqual(expect.stringContaining("Execute command:"));
     });
 
     test("コマンド実行でエラーが発生した場合", async () => {
@@ -352,7 +282,6 @@ describe("tools", () => {
 
       const result = await tools.executeCommand({
         command: "invalid-command",
-        requiresApproval: false,
       });
 
       expect(result.ok).toBe(false);

@@ -149,7 +149,7 @@ describe("ask_questionツールの解析", () => {
 });
 
 describe("execute_commandツールの解析", () => {
-  test("コマンドのみ指定された場合にデフォルトでrequiresApprovalがtrueになること", () => {
+  test("コマンドが正しく解析されること", () => {
     const response = "<execute_command><command>ls -la</command></execute_command>";
     const result = parseTool(response);
 
@@ -159,30 +159,12 @@ describe("execute_commandツールの解析", () => {
       expect(tool.type).toBe("execute_command");
       expect(tool.params).toEqual({
         command: "ls -la",
-        requiresApproval: true,
-      });
-    }
-  });
-
-  test("コマンドと承認フラグが指定された場合に正しく解析すること", () => {
-    const response =
-      "<execute_command><command>echo hello</command><requires_approval>false</requires_approval></execute_command>";
-    const result = parseTool(response);
-
-    expect(result.ok).toBe(true);
-    if (result.ok) {
-      const tool = result.result as Tool;
-      expect(tool.type).toBe("execute_command");
-      expect(tool.params).toEqual({
-        command: "echo hello",
-        requiresApproval: false,
       });
     }
   });
 
   test("コマンドが指定されていない場合にエラーを返すこと", () => {
-    const response =
-      "<execute_command><requires_approval>true</requires_approval></execute_command>";
+    const response = "<execute_command></execute_command>";
     const result = parseTool(response);
 
     expect(result.ok).toBe(false);
