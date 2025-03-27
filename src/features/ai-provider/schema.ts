@@ -1,18 +1,6 @@
 import { z } from "zod";
 
 /**
- * AIProviderの設定のデフォルト値
- */
-export const DEFAULT_CONFIG = {
-  model: "gpt-4",
-  temperature: 0.7,
-  rateLimit: {
-    maxRequests: 60,
-    windowMs: 60000, // 1分
-  },
-} as const;
-
-/**
  * レートリミットの設定スキーマ
  */
 export const rateLimitSchema = z.object({

@@ -1,5 +1,6 @@
 import { AsyncLock } from "../../lib/async-lock";
 import type { RateLimitConfig, RateLimitInfo, RateLimitResult } from "./types";
+import { RateLimitExceededError } from "./types";
 
 export class RateLimiter {
   private requests: Map<string, number[]>;
@@ -75,7 +76,8 @@ export class RateLimiter {
     const windowStart = now - this.config.windowMs;
 
     // 二分探索で有効なタイムスタンプの数を計算
-    const count = timestamps.length - this.findFirstValidIndex(timestamps, windowStart);
+    const validTimestamps = timestamps.filter((timestamp) => timestamp > windowStart);
+    const count = validTimestamps.length;
 
     return {
       remaining: Math.max(0, this.config.maxRequests - count),
@@ -118,3 +120,32 @@ export class RateLimiter {
     this.requests.delete(key);
   }
 }
+
+let globalRateLimiter: RateLimiter | null = null;
+
+export function initRateLimiter(getTime: () => number = Date.now): void {
+  globalRateLimiter = new RateLimiter(
+    {
+      maxRequests: 15,
+      windowMs: 1000,
+    },
+    getTime,
+  );
+}
+
+export const withRateLimit = (key: string) => {
+  return async <T>(next: () => Promise<T>): Promise<T> => {
+    if (!globalRateLimiter) {
+      throw new Error("Rate limiter is not initialized");
+    }
+
+    const limiter = globalRateLimiter;
+    const result = await limiter.check(key);
+
+    if (!result.success) {
+      throw new RateLimitExceededError(result.info);
+    }
+
+    return next();
+  };
+};

@@ -142,7 +142,11 @@ export class CodingAgent {
    */
   static fromEnv(type: "anthropic" | "google"): CodingAgent {
     const config = loadAIProviderConfig();
-    const provider = createAIProvider(type, config);
+    const provider = createAIProvider(type, {
+      apiKey: type === "anthropic" ? config.anthropicApiKey : config.geminiApiKey,
+      rateLimit: config.rateLimit,
+      rateLimitKey: config.rateLimitKey,
+    });
     const finalProvider =
       config.rateLimit && config.rateLimitKey
         ? createRateLimitedAIProvider(provider, config.rateLimit, config.rateLimitKey)

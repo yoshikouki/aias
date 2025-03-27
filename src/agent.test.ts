@@ -297,10 +297,11 @@ describe("CodingAgent", () => {
       });
 
       test("必須の環境変数が設定されていない場合はエラーを投げること", () => {
-        delete process.env.AI_API_KEY;
-        expect(() => CodingAgent.fromEnv("anthropic")).toThrow(
-          "AI_API_KEY environment variable is required",
-        );
+        const originalEnv = { ...process.env };
+        process.env.ANTHROPIC_API_KEY = undefined;
+        process.env.GEMINI_API_KEY = undefined;
+        expect(() => CodingAgent.fromEnv("anthropic")).toThrow("Required");
+        process.env = originalEnv;
       });
     });
   });

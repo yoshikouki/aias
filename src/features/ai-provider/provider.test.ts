@@ -9,7 +9,7 @@ describe("AIProvider", () => {
     temperature: 0.5,
   };
 
-  const mockMessages: Message[] = [
+  const _mockMessages: Message[] = [
     { role: "user", content: "Hello" },
     { role: "assistant", content: "Hi there!" },
   ];

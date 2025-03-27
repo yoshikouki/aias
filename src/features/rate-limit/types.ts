@@ -19,3 +19,14 @@ export interface RateLimitError {
   message: string;
   info: RateLimitInfo;
 }
+
+export class RateLimitExceededError extends Error implements RateLimitError {
+  readonly type = "rate_limit" as const;
+  readonly info: RateLimitError["info"];
+
+  constructor(info: RateLimitError["info"]) {
+    super("Rate limit exceeded");
+    this.name = "RateLimitExceededError";
+    this.info = info;
+  }
+}

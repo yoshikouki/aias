@@ -1,4 +1,4 @@
-export * from "./rate-limit";
-export * from "./middleware";
+export { RateLimiter } from "./rate-limit";
+export { initRateLimiter, withRateLimit } from "./middleware";
 export * from "./types";
 export * from "./constants";

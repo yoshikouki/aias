@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { initRateLimiter, withRateLimit } from "./rate-limit";
+import { initRateLimiter, withRateLimit } from "./middleware";
 
 describe("withRateLimit", () => {
   let currentTime = 0;
@@ -33,17 +33,20 @@ describe("withRateLimit", () => {
     }
 
     // 制限超過のリクエスト
-    await expect(async () => {
+    try {
       await middleware(next);
-    }).rejects.toMatchObject({
-      type: "rate_limit",
-      message: "Rate limit exceeded",
-      info: {
-        remaining: 0,
-        limit: 15,
-        reset: expect.any(Number),
-      },
-    });
+      throw new Error("Expected middleware to throw an error");
+    } catch (error) {
+      expect(error).toMatchObject({
+        type: "rate_limit",
+        message: "Rate limit exceeded",
+        info: {
+          remaining: 0,
+          limit: 15,
+          reset: expect.any(Number),
+        },
+      });
+    }
   });
 
   it("should handle multiple keys independently", async () => {
