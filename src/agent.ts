@@ -6,7 +6,7 @@ import {
   loadAIProviderConfig,
 } from "./features/ai-provider";
 import type { RateLimitConfig } from "./features/rate-limit/types";
-import { logger } from "./lib/logger";
+import type { Logger } from "./lib/logger";
 import { parseAndExecuteTool } from "./parser";
 import type { ToolResult } from "./types";
 
@@ -60,7 +60,10 @@ Always use one of the above tools. Do not respond directly without using a tool.
 export class CodingAgent {
   private messages: Message[] = [];
 
-  constructor(private readonly aiProvider: AIProvider) {}
+  constructor(
+    private readonly aiProvider: AIProvider,
+    private readonly logger: Logger,
+  ) {}
 
   /**
    * タスクを開始する
@@ -74,7 +77,7 @@ export class CodingAgent {
     let isComplete = false;
     while (!isComplete) {
       // AIからの応答を取得
-      logger.log(`[${new Date().toISOString()}]: ${this.messages.length}`);
+      this.logger.log(`[${new Date().toISOString()}]: ${this.messages.length}`);
       const assistantResponse = await this.aiProvider.generateResponse(this.messages);
       this.messages.push({ role: "assistant", content: assistantResponse });
 
@@ -99,9 +102,9 @@ export class CodingAgent {
    */
   private displayToolResult(result: ToolResult): void {
     if (result.ok) {
-      logger.log(`\n[${result.result}]`);
+      this.logger.log(`\n[${result.result}]`);
     } else {
-      logger.error(`\n[Error: ${result.error.message}]`);
+      this.logger.error(`\n[Error: ${result.error.message}]`);
     }
   }
 
@@ -110,6 +113,7 @@ export class CodingAgent {
    */
   static fromAnthropicApiKey(
     apiKey: string,
+    logger: Logger,
     rateLimitConfig?: RateLimitConfig,
     rateLimitKey?: string,
   ): CodingAgent {
@@ -118,7 +122,7 @@ export class CodingAgent {
       rateLimitConfig && rateLimitKey
         ? createRateLimitedAIProvider(provider, rateLimitConfig, rateLimitKey)
         : provider;
-    return new CodingAgent(finalProvider);
+    return new CodingAgent(finalProvider, logger);
   }
 
   /**
@@ -126,6 +130,7 @@ export class CodingAgent {
    */
   static fromGoogleApiKey(
     apiKey: string,
+    logger: Logger,
     rateLimitConfig?: RateLimitConfig,
     rateLimitKey?: string,
   ): CodingAgent {
@@ -134,13 +139,13 @@ export class CodingAgent {
       rateLimitConfig && rateLimitKey
         ? createRateLimitedAIProvider(provider, rateLimitConfig, rateLimitKey)
         : provider;
-    return new CodingAgent(finalProvider);
+    return new CodingAgent(finalProvider, logger);
   }
 
   /**
    * ファクトリーメソッド: 環境変数から設定を読み込んでエージェントを作成
    */
-  static fromEnv(type: "anthropic" | "google"): CodingAgent {
+  static fromEnv(type: "anthropic" | "google", logger: Logger): CodingAgent {
     const config = loadAIProviderConfig();
     const provider = createAIProvider(type, {
       apiKey: type === "anthropic" ? config.anthropicApiKey : config.geminiApiKey,
@@ -151,6 +156,6 @@ export class CodingAgent {
       config.rateLimit && config.rateLimitKey
         ? createRateLimitedAIProvider(provider, config.rateLimit, config.rateLimitKey)
         : provider;
-    return new CodingAgent(finalProvider);
+    return new CodingAgent(finalProvider, logger);
   }
 }

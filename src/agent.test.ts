@@ -1,245 +1,131 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { CodingAgent } from "./agent";
-import type { AIProvider, Message } from "./features/ai-provider";
-import * as loggerModule from "./lib/logger";
-import { failure, success } from "./lib/result";
+import { InMemoryAIProvider } from "./features/ai-provider/in-memory-provider";
+import { InMemoryFSAdapter } from "./lib/in-memory-fs-adapter";
+import {} from "./lib/result";
 import { createMockLogger } from "./lib/test-utils";
-import * as parser from "./parser";
-
-// AIProviderのモック
-class MockAIProvider implements AIProvider {
-  public responses: string[] = [];
-  public messages: Message[] = [];
-
-  async generateResponse(messages: Message[]): Promise<string> {
-    this.messages = [...messages];
-    return this.responses.shift() || "";
-  }
-}
-
-// logger モジュールのモック
-vi.mock("./lib/logger", () => {
-  const mockLogger = {
-    log: vi.fn(),
-    error: vi.fn(),
-  };
-  return {
-    logger: mockLogger,
-    createConsoleLogger: vi.fn().mockReturnValue(mockLogger),
-    createSilentLogger: vi.fn().mockReturnValue(mockLogger),
-    createInMemoryLogger: vi.fn().mockReturnValue(mockLogger),
-  };
-});
+import * as tools from "./tools";
 
 describe("CodingAgent", () => {
-  let mockAIProvider: MockAIProvider;
+  let aiProvider: InMemoryAIProvider;
   let agent: CodingAgent;
   let mockLogger: ReturnType<typeof createMockLogger>;
-  const originalEnv = process.env;
+  let fsAdapter: InMemoryFSAdapter;
 
   beforeEach(() => {
     vi.resetAllMocks();
-    mockAIProvider = new MockAIProvider();
-    agent = new CodingAgent(mockAIProvider);
-
-    // モックロガーを作成
+    aiProvider = new InMemoryAIProvider();
     mockLogger = createMockLogger();
-    // loggerモジュールのloggerをモックロガーで上書き
-    Object.defineProperty(loggerModule, "logger", {
-      value: mockLogger,
-      writable: true,
-    });
+    fsAdapter = new InMemoryFSAdapter();
+    agent = new CodingAgent(aiProvider, mockLogger);
 
-    // 環境変数をリセット
-    process.env = { ...originalEnv };
+    // ツールの依存関係を設定
+    vi.spyOn(tools, "listFile").mockImplementation((params) => {
+      return tools.listFile(params, { fsAdapter, logger: mockLogger });
+    });
+    vi.spyOn(tools, "readFile").mockImplementation((params) => {
+      return tools.readFile(params, { fsAdapter, logger: mockLogger });
+    });
+    vi.spyOn(tools, "writeFile").mockImplementation((params) => {
+      return tools.writeFile(params, { fsAdapter, logger: mockLogger });
+    });
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
-    process.env = originalEnv;
+    fsAdapter.clear();
   });
 
   test("タスクを開始するとAIに初期メッセージが送信されること", async () => {
-    // パーサーの呼び出しをモック
-    const parseAndExecuteToolSpy = vi.spyOn(parser, "parseAndExecuteTool").mockResolvedValue({
-      toolResult: success("成功しました"),
-      isComplete: true,
-    });
-
     // AIの応答をセット
-    mockAIProvider.responses = ["<complete><r>タスク完了</r></complete>"];
+    aiProvider.setResponses(["<complete><r>タスク完了</r></complete>"]);
 
     await agent.start("テストタスク");
 
     // システムプロンプトとユーザータスクが送られていることを検証
-    expect(mockAIProvider.messages.length).toBeGreaterThanOrEqual(2);
-    expect(mockAIProvider.messages[0]?.role).toBe("assistant");
-    expect(mockAIProvider.messages[0]?.content).toContain("You are a coding agent");
-    expect(mockAIProvider.messages[1]?.role).toBe("user");
-    expect(mockAIProvider.messages[1]?.content).toBe("テストタスク");
-
-    // パーサーが呼び出されたことを検証
-    expect(parseAndExecuteToolSpy).toHaveBeenCalledWith(
-      "<complete><r>タスク完了</r></complete>",
-    );
+    const messages = aiProvider.getMessages();
+    expect(messages.length).toBeGreaterThanOrEqual(2);
+    expect(messages[0]?.role).toBe("assistant");
+    expect(messages[0]?.content).toContain("You are a coding agent");
+    expect(messages[1]?.role).toBe("user");
+    expect(messages[1]?.content).toBe("テストタスク");
   });
 
   test("ツール実行の結果がメッセージに追加されること", async () => {
-    // パーサーの呼び出しをモック
-    vi.spyOn(parser, "parseAndExecuteTool")
-      .mockResolvedValueOnce({
-        toolResult: success("ツール実行結果"),
-        isComplete: false,
-      })
-      .mockResolvedValueOnce({
-        toolResult: success("最終結果"),
-        isComplete: true,
-      });
+    // テストファイルを作成
+    await fsAdapter.writeFile("test.txt", "テストファイルの内容", "utf-8");
 
     // AIの応答をセット
-    mockAIProvider.responses = [
-      "<tool1></tool1>",
-      "<complete><result>タスク完了</result></complete>",
-    ];
+    aiProvider.setResponses([
+      "<read_file><path>test.txt</path></read_file>",
+      "<complete><r>タスク完了</r></complete>",
+    ]);
 
     await agent.start("テストタスク");
 
-    // モックオブジェクトのメッセージ配列を確認する
-    console.log(
-      mockAIProvider.messages.map(
-        (msg, i) => `[${i}] ${msg.role}: ${msg.content.substring(0, 30)}...`,
-      ),
-    );
+    // メッセージ配列を確認する
+    const messages = aiProvider.getMessages();
 
     // システムプロンプト、ユーザータスク、AIの応答のあとにツール実行結果が追加されることを確認
-    expect(mockAIProvider.messages.length).toBeGreaterThanOrEqual(4);
-    const toolResultMessage = mockAIProvider.messages.find(
-      (msg) => msg.role === "user" && msg.content.includes("[Tool Result] ツール実行結果"),
+    expect(messages.length).toBeGreaterThanOrEqual(4);
+    const toolResultMessage = messages.find(
+      (msg) =>
+        msg.role === "user" && msg.content.includes("[Tool Result] テストファイルの内容"),
     );
     expect(toolResultMessage).toBeDefined();
   });
 
   test("ツール実行に失敗した場合もエラーメッセージがユーザーメッセージに追加されること", async () => {
-    // パーサーの呼び出しをモック
-    vi.spyOn(parser, "parseAndExecuteTool")
-      .mockResolvedValueOnce({
-        toolResult: failure({
-          message: "ツール実行エラー",
-          code: "TEST_ERROR",
-        }),
-        isComplete: false,
-      })
-      .mockResolvedValueOnce({
-        toolResult: success("最終結果"),
-        isComplete: true,
-      });
-
     // AIの応答をセット
-    mockAIProvider.responses = [
-      "<invalid></invalid>",
-      "<complete><result>タスク完了</result></complete>",
-    ];
+    aiProvider.setResponses([
+      "<read_file><path>not_exists.txt</path></read_file>",
+      "<complete><r>タスク完了</r></complete>",
+    ]);
 
     await agent.start("テストタスク");
 
     // システムプロンプト、ユーザータスク、AIの応答のあとにエラーメッセージが追加されることを確認
-    const errorMessage = mockAIProvider.messages.find(
-      (msg) => msg.role === "user" && msg.content.includes("[Tool Result] ツール実行エラー"),
+    const messages = aiProvider.getMessages();
+    const errorMessage = messages.find(
+      (msg) => msg.role === "user" && msg.content.includes("[Tool Result] Failed to read file"),
     );
     expect(errorMessage).toBeDefined();
   });
 
   test("タスクが完了するまでループが続くこと", async () => {
-    // テスト用の変数
-    const firstResult = "1回目の実行";
-    const secondResult = "2回目の実行";
-    const finalResult = "タスク完了";
-
-    // パーサーの呼び出しをモック
-    const mockedParser = vi.spyOn(parser, "parseAndExecuteTool");
-
-    // 実行回数をカウントするための変数
-    let executionCount = 0;
-
-    // テスト用に独自のログ記録関数を定義
-    const testLogs: string[] = [];
-    const log = (message: string): void => {
-      testLogs.push(message);
-    };
-
-    // 実行されるたびに異なる結果を返すモック関数
-    mockedParser.mockImplementation(async (assistantResponse: string) => {
-      executionCount++;
-      log(`Tool execution #${executionCount} with input: ${assistantResponse}`);
-
-      if (executionCount === 1) {
-        return {
-          toolResult: success(firstResult),
-          isComplete: false,
-        };
-      }
-
-      if (executionCount === 2) {
-        return {
-          toolResult: success(secondResult),
-          isComplete: false,
-        };
-      }
-
-      // 3回目以降
-      return {
-        toolResult: success(finalResult),
-        isComplete: true,
-      };
-    });
+    // テストファイルを作成
+    await fsAdapter.writeFile("test1.txt", "1回目の実行", "utf-8");
+    await fsAdapter.writeFile("test2.txt", "2回目の実行", "utf-8");
 
     // AIの応答をセット (3つのレスポンス)
-    mockAIProvider.responses = [
-      "<tool1></tool1>",
-      "<tool2></tool2>",
+    aiProvider.setResponses([
+      "<read_file><path>test1.txt</path></read_file>",
+      "<read_file><path>test2.txt</path></read_file>",
       "<complete><r>タスク完了</r></complete>",
-    ];
+    ]);
 
     await agent.start("テストタスク");
 
-    // 3回実行されたことを確認
-    expect(mockedParser).toHaveBeenCalledTimes(3);
-
     // ユーザーメッセージにツール実行結果が含まれていることを確認
-    const userMessages = mockAIProvider.messages
+    const messages = aiProvider.getMessages();
+    const userMessages = messages
       .filter((msg) => msg.role === "user")
       .map((msg) => msg.content);
-
-    // 各メッセージを詳細に出力（テスト用）
-    log("All messages:");
-    mockAIProvider.messages.forEach((msg, i) => {
-      log(`[${i}] ${msg.role}: ${msg.content}`);
-    });
-
-    log("\nUser messages:");
-    userMessages.forEach((msg, i) => {
-      log(`[${i}] ${msg}`);
-    });
 
     // 初期のユーザーメッセージ
     expect(userMessages).toContain("テストタスク");
 
     // 最初の2つのツール実行結果が含まれていることは確認
-    const firstToolResult = `[Tool Result] ${firstResult}`;
-    const secondToolResult = `[Tool Result] ${secondResult}`;
+    const firstToolResult = "[Tool Result] 1回目の実行";
+    const secondToolResult = "[Tool Result] 2回目の実行";
 
     expect(userMessages).toContain(firstToolResult);
     expect(userMessages).toContain(secondToolResult);
 
-    // パーサーが正しく呼び出されたことを確認
-    expect(mockedParser).toHaveBeenNthCalledWith(1, "<tool1></tool1>");
-    expect(mockedParser).toHaveBeenNthCalledWith(2, "<tool2></tool2>");
-    expect(mockedParser).toHaveBeenNthCalledWith(3, "<complete><r>タスク完了</r></complete>");
-
     // ロガーに記録されているメッセージを確認
-    expect(mockLogger.logs).toContainEqual(expect.stringContaining(firstResult));
-    expect(mockLogger.logs).toContainEqual(expect.stringContaining(secondResult));
-    expect(mockLogger.logs).toContainEqual(expect.stringContaining(finalResult));
+    expect(mockLogger.logs).toContainEqual(expect.stringContaining("1回目の実行"));
+    expect(mockLogger.logs).toContainEqual(expect.stringContaining("2回目の実行"));
+    expect(mockLogger.logs).toContainEqual(expect.stringContaining("タスク完了"));
   });
 
   describe("ファクトリーメソッド", () => {
@@ -249,9 +135,11 @@ describe("CodingAgent", () => {
         windowMs: 60000,
       };
       const rateLimitKey = "test-user";
+      const mockLogger = createMockLogger();
 
       const agent = CodingAgent.fromAnthropicApiKey(
         "test-api-key",
+        mockLogger,
         rateLimitConfig,
         rateLimitKey,
       );
@@ -265,14 +153,21 @@ describe("CodingAgent", () => {
         windowMs: 60000,
       };
       const rateLimitKey = "test-user";
+      const mockLogger = createMockLogger();
 
-      const agent = CodingAgent.fromGoogleApiKey("test-api-key", rateLimitConfig, rateLimitKey);
+      const agent = CodingAgent.fromGoogleApiKey(
+        "test-api-key",
+        mockLogger,
+        rateLimitConfig,
+        rateLimitKey,
+      );
 
       expect(agent).toBeInstanceOf(CodingAgent);
     });
 
     test("レートリミット設定なしでエージェントを作成できること", () => {
-      const agent = CodingAgent.fromAnthropicApiKey("test-api-key");
+      const mockLogger = createMockLogger();
+      const agent = CodingAgent.fromAnthropicApiKey("test-api-key", mockLogger);
       expect(agent).toBeInstanceOf(CodingAgent);
     });
 
@@ -281,8 +176,9 @@ describe("CodingAgent", () => {
         process.env.AI_API_KEY = "test-api-key";
         process.env.AI_MODEL = "test-model";
         process.env.AI_TEMPERATURE = "0.7";
+        const mockLogger = createMockLogger();
 
-        const agent = CodingAgent.fromEnv("anthropic");
+        const agent = CodingAgent.fromEnv("anthropic", mockLogger);
         expect(agent).toBeInstanceOf(CodingAgent);
       });
 
@@ -291,16 +187,19 @@ describe("CodingAgent", () => {
         process.env.AI_RATE_LIMIT_MAX_REQUESTS = "10";
         process.env.AI_RATE_LIMIT_WINDOW_MS = "60000";
         process.env.AI_RATE_LIMIT_KEY = "test-user";
+        const mockLogger = createMockLogger();
 
-        const agent = CodingAgent.fromEnv("anthropic");
+        const agent = CodingAgent.fromEnv("anthropic", mockLogger);
         expect(agent).toBeInstanceOf(CodingAgent);
       });
 
       test("必須の環境変数が設定されていない場合はエラーを投げること", () => {
         const originalEnv = { ...process.env };
-        process.env.ANTHROPIC_API_KEY = undefined;
-        process.env.GEMINI_API_KEY = undefined;
-        expect(() => CodingAgent.fromEnv("anthropic")).toThrow("Required");
+        delete process.env.ANTHROPIC_API_KEY;
+        delete process.env.GEMINI_API_KEY;
+        const mockLogger = createMockLogger();
+
+        expect(() => CodingAgent.fromEnv("anthropic", mockLogger)).toThrow("Required");
         process.env = originalEnv;
       });
     });
