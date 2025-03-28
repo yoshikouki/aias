@@ -1,3 +1,4 @@
+import { createInterface } from "node:readline";
 import { type CommandAdapter, NodeCommandAdapter } from "./lib/commandAdapter";
 import { type FSAdapter, defaultFSAdapter } from "./lib/fsAdapter";
 import { type Logger, logger as defaultLogger } from "./lib/logger";
@@ -114,9 +115,18 @@ export async function askQuestion(
   const { logger } = { ...defaultDeps, ...deps };
   try {
     logger.log(`\nQuestion: ${params.question}`);
-    const answer = await new Promise<string>((resolve) => {
-      process.stdin.once("data", (data) => resolve(data.toString().trim()));
+    const rl = createInterface({
+      input: process.stdin,
+      output: process.stdout,
     });
+
+    const answer = await new Promise<string>((resolve) => {
+      rl.question("> ", (answer) => {
+        rl.close();
+        resolve(answer.trim());
+      });
+    });
+
     return success(`User answered: ${answer}`);
   } catch (error) {
     return failure({

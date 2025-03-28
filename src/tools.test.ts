@@ -1,6 +1,5 @@
 import type { Dirent } from "node:fs";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import { MockCommandAdapter } from "./lib/commandAdapter";
 import type { FSAdapter } from "./lib/fsAdapter";
 import { createMockLogger } from "./lib/test-utils";
 import * as tools from "./tools";
@@ -177,13 +176,19 @@ describe("tools", () => {
 
   describe("askQuestion", () => {
     test("ユーザーから回答を受け取れた場合", async () => {
-      // process.stdin.onceをスパイして、コールバックを直接実行
-      const onceSpy = vi
-        .spyOn(process.stdin, "once")
-        .mockImplementation((_event: string, callback: (data: Buffer) => void) => {
-          callback(Buffer.from("user answer"));
-          return process.stdin;
-        });
+      // readlineのquestionメソッドをスパイして、コールバックを直接実行
+      // @ts-ignore - vi.spyOnの型定義の問題を回避
+      const questionSpy = vi
+        .spyOn(require("node:readline").Interface.prototype, "question")
+        .mockImplementation(function (
+          this: { close: () => void },
+          _prompt: string,
+          callback: (answer: string) => void,
+        ) {
+          callback("user answer");
+          this.close();
+          // biome-ignore lint/suspicious/noExplicitAny: テストコードでの一時的な対処
+        } as any);
 
       const result = await tools.askQuestion(
         { question: "What is your name?" },
@@ -196,43 +201,35 @@ describe("tools", () => {
       }
       // ロガーにメッセージが記録されていることを確認
       expect(mockLogger.logs).toContainEqual(expect.stringContaining("What is your name?"));
-      expect(onceSpy).toHaveBeenCalledWith("data", expect.any(Function));
+      expect(questionSpy).toHaveBeenCalledWith("> ", expect.any(Function));
 
-      onceSpy.mockRestore();
+      questionSpy.mockRestore();
     });
   });
 
   describe("executeCommand", () => {
     test("コマンドが正常に実行されること", async () => {
-      const mockAdapter = new MockCommandAdapter({
-        stdout: "command output",
-        stderr: "stderr output",
-      });
-
       const result = await tools.executeCommand(
         {
-          command: "ls -la",
+          command: "echo 'test output'",
         },
-        { commandAdapter: mockAdapter, logger: mockLogger },
+        { logger: mockLogger },
       );
 
       expect(result.ok).toBe(true);
       if (result.ok) {
-        expect(result.result).toContain("command output");
+        expect(result.result).toContain("test output");
       }
       // ロガーにメッセージが記録されていることを確認
       expect(mockLogger.logs).toContainEqual(expect.stringContaining("Execute command:"));
     });
 
     test("コマンド実行でエラーが発生した場合", async () => {
-      const mockAdapter = new MockCommandAdapter();
-      vi.spyOn(mockAdapter, "execute").mockRejectedValue(new Error("Command failed"));
-
       const result = await tools.executeCommand(
         {
-          command: "invalid-command",
+          command: "invalid-command-that-does-not-exist",
         },
-        { commandAdapter: mockAdapter, logger: mockLogger },
+        { logger: mockLogger },
       );
 
       expect(result.ok).toBe(false);

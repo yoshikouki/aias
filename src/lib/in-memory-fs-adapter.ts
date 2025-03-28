@@ -15,7 +15,7 @@ export class InMemoryFSAdapter implements FSAdapter {
   /**
    * ファイルを読み込む
    */
-  async readFile(path: string, encoding: BufferEncoding): Promise<string> {
+  async readFile(path: string, _encoding: BufferEncoding): Promise<string> {
     const file = this.files.get(path);
     if (!file) {
       throw new Error(`ENOENT: no such file or directory, open '${path}'`);
@@ -33,11 +33,14 @@ export class InMemoryFSAdapter implements FSAdapter {
   /**
    * ディレクトリの内容を読み込む
    */
-  async readdir(path: string, options?: { recursive?: boolean }): Promise<(string | Dirent)[]> {
+  async readdir(
+    path: string,
+    _options?: { recursive?: boolean },
+  ): Promise<(string | Dirent)[]> {
     const files = Array.from(this.files.keys())
       .filter((filePath) => filePath.startsWith(path))
       .map((filePath) => filePath.slice(path.length + 1).split("/")[0])
-      .filter((name) => name.length > 0);
+      .filter((name): name is string => name !== undefined && name.length > 0);
 
     return [...new Set(files)];
   }

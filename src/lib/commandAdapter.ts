@@ -12,13 +12,3 @@ export class NodeCommandAdapter implements CommandAdapter {
     return await execAsync(command);
   }
 }
-
-export class MockCommandAdapter implements CommandAdapter {
-  constructor(
-    private mockResult: { stdout: string; stderr: string } = { stdout: "", stderr: "" },
-  ) {}
-
-  async execute(_command: string): Promise<{ stdout: string; stderr: string }> {
-    return this.mockResult;
-  }
-}

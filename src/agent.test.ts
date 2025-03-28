@@ -20,14 +20,54 @@ describe("CodingAgent", () => {
     agent = new CodingAgent(aiProvider, mockLogger);
 
     // ツールの依存関係を設定
-    vi.spyOn(tools, "listFile").mockImplementation((params) => {
-      return tools.listFile(params, { fsAdapter, logger: mockLogger });
+    vi.spyOn(tools, "listFile").mockImplementation(async (params) => {
+      const files = await fsAdapter.readdir(params.path, { recursive: params.recursive });
+      const filesStr = files
+        .map((file) => {
+          if (typeof file === "string") {
+            return file;
+          }
+          // @ts-ignore - Direntオブジェクトの場合nameプロパティが存在する
+          if (file && typeof file === "object" && "name" in file) {
+            // @ts-ignore
+            return file.name;
+          }
+          return String(file);
+        })
+        .join("\n");
+      return { ok: true, result: `Directory ${params.path} contents:\n${filesStr}` };
     });
-    vi.spyOn(tools, "readFile").mockImplementation((params) => {
-      return tools.readFile(params, { fsAdapter, logger: mockLogger });
+
+    vi.spyOn(tools, "readFile").mockImplementation(async (params) => {
+      try {
+        const content = await fsAdapter.readFile(params.path, "utf-8");
+        return { ok: true, result: content };
+      } catch (error) {
+        return {
+          ok: false,
+          error: {
+            code: "READ_FILE_ERROR",
+            message: "Failed to read file",
+            error,
+          },
+        };
+      }
     });
-    vi.spyOn(tools, "writeFile").mockImplementation((params) => {
-      return tools.writeFile(params, { fsAdapter, logger: mockLogger });
+
+    vi.spyOn(tools, "writeFile").mockImplementation(async (params) => {
+      try {
+        await fsAdapter.writeFile(params.path, params.content, "utf-8");
+        return { ok: true, result: `Successfully wrote to ${params.path}` };
+      } catch (error) {
+        return {
+          ok: false,
+          error: {
+            code: "WRITE_FILE_ERROR",
+            message: "Failed to write file",
+            error,
+          },
+        };
+      }
     });
   });
 
@@ -195,8 +235,8 @@ describe("CodingAgent", () => {
 
       test("必須の環境変数が設定されていない場合はエラーを投げること", () => {
         const originalEnv = { ...process.env };
-        delete process.env.ANTHROPIC_API_KEY;
-        delete process.env.GEMINI_API_KEY;
+        process.env.ANTHROPIC_API_KEY = undefined;
+        process.env.GEMINI_API_KEY = undefined;
         const mockLogger = createMockLogger();
 
         expect(() => CodingAgent.fromEnv("anthropic", mockLogger)).toThrow("Required");

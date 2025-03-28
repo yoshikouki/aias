@@ -8,7 +8,7 @@ async function main() {
     process.exit(1);
   }
 
-  const agent = CodingAgent.fromGoogleApiKey(apiKey);
+  const agent = CodingAgent.fromGoogleApiKey(apiKey, logger);
 
   logger.log("Enter your task:");
   const task = await new Promise<string>((resolve) => {
