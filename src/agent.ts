@@ -1,10 +1,10 @@
 import {
   type AIProvider,
-  type Message,
   createAIProvider,
   createRateLimitedAIProvider,
   loadAIProviderConfig,
 } from "./features/ai-provider";
+import type { CodingSkill } from "./features/coding/skill";
 import type { RateLimitConfig } from "./features/rate-limit/types";
 import type { Logger } from "./lib/logger";
 import { parseAndExecuteTool } from "./parser";
@@ -53,6 +53,23 @@ Indicate task completion.
 </complete>
 
 Always use one of the above tools. Do not respond directly without using a tool.`;
+
+export interface AiasAgentConfig {
+  codingSkill: CodingSkill;
+  logger: Logger;
+}
+
+export interface Message {
+  content: string;
+  role: "user" | "assistant";
+  userId?: string;
+  channelId?: string;
+}
+
+export interface Response {
+  content: string;
+  type: "text" | "code" | "error";
+}
 
 /**
  * コーディングエージェントを実装
@@ -157,5 +174,23 @@ export class CodingAgent {
         ? createRateLimitedAIProvider(provider, config.rateLimit, config.rateLimitKey)
         : provider;
     return new CodingAgent(finalProvider, logger);
+  }
+}
+
+export class AiasAgent {
+  constructor(private readonly config: AiasAgentConfig) {}
+
+  async handleMessage(message: Message): Promise<Response> {
+    try {
+      // TODO: Implement skill selection logic based on message content
+      // For now, we'll just use the chat skill
+      return await this.config.chatSkill.handleMessage(message);
+    } catch (error) {
+      this.config.logger.error("Error handling message:", error);
+      return {
+        content: "Sorry, I encountered an error while processing your message.",
+        type: "error",
+      };
+    }
   }
 }

@@ -1,4 +1,4 @@
-import { CodingAgent } from "./agent";
+import { createCodingSkill } from "./features/coding/skill";
 import { logger } from "./lib/logger";
 
 async function main() {
@@ -8,11 +8,16 @@ async function main() {
     process.exit(1);
   }
 
-  const agent = CodingAgent.fromGoogleApiKey(apiKey, logger);
 
   logger.log("Enter your task:");
   const task = await new Promise<string>((resolve) => {
     process.stdin.once("data", (data) => resolve(data.toString().trim()));
+  // Initialize skills
+  const codingSkill = createCodingSkill(apiKey, logger);
+  // Initialize the main agent
+  const agent = new AiasAgent({
+    codingSkill,
+    logger,
   });
 
   try {
