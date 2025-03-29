@@ -1,3 +1,4 @@
+import type { FSAdapter } from "../../lib/fsAdapter";
 import { failure, success } from "../../lib/result";
 import * as tools from "./tools";
 import type {
@@ -12,7 +13,10 @@ import type {
 /**
  * AIの応答からツール呼び出しを解析し、実行する
  */
-export async function parseAndExecuteTool(response: string): Promise<ToolExecutionResult> {
+export async function parseAndExecuteTool(
+  response: string,
+  fsAdapter?: FSAdapter,
+): Promise<ToolExecutionResult> {
   const parsedTool = parseTool(response);
 
   if (!parsedTool.ok) {
@@ -22,7 +26,7 @@ export async function parseAndExecuteTool(response: string): Promise<ToolExecuti
     };
   }
 
-  const toolResult = await executeTool(parsedTool.result);
+  const toolResult = await executeTool(parsedTool.result, fsAdapter);
   return {
     toolResult,
     isComplete: parsedTool.result.type === "complete",
@@ -46,11 +50,18 @@ export function parseTool(response: string): Result<Tool, ToolError> {
   if (!isValidToolType(toolType)) {
     return failure({
       message: `Unknown tool type: ${toolType}`,
-      code: "INVALID_TOOL_TYPE",
+      code: "UNKNOWN_TOOL",
     });
   }
 
-  return parseParams(toolType, content);
+  if (!content) {
+    return failure({
+      message: "Tool content is empty",
+      code: "PARSE_ERROR",
+    });
+  }
+
+  return parseParams(toolType, content.trim());
 }
 
 /**
@@ -93,8 +104,8 @@ function parseParams(toolType: ToolType, content: string | undefined): Result<To
   try {
     switch (toolType) {
       case "list_file": {
-        const pathMatch = content.match(/<path>(.*?)<\/path>/);
-        const recursiveMatch = content.match(/<recursive>(.*?)<\/recursive>/);
+        const pathMatch = content.match(/<path>([\s\S]*?)<\/path>/);
+        const recursiveMatch = content.match(/<recursive>([\s\S]*?)<\/recursive>/);
 
         if (!pathMatch || !pathMatch[1]) {
           return failure({
@@ -106,14 +117,14 @@ function parseParams(toolType: ToolType, content: string | undefined): Result<To
         return success({
           type: "list_file",
           params: {
-            path: pathMatch[1],
-            recursive: recursiveMatch?.[1]?.toLowerCase() === "true",
+            path: pathMatch[1].trim(),
+            recursive: recursiveMatch?.[1]?.trim().toLowerCase() === "true",
           },
         });
       }
 
       case "read_file": {
-        const readPathMatch = content.match(/<path>(.*?)<\/path>/);
+        const readPathMatch = content.match(/<path>([\s\S]*?)<\/path>/);
 
         if (!readPathMatch || !readPathMatch[1]) {
           return failure({
@@ -124,12 +135,12 @@ function parseParams(toolType: ToolType, content: string | undefined): Result<To
 
         return success({
           type: "read_file",
-          params: { path: readPathMatch[1] },
+          params: { path: readPathMatch[1].trim() },
         });
       }
 
       case "write_file": {
-        const writePathMatch = content.match(/<path>(.*?)<\/path>/);
+        const writePathMatch = content.match(/<path>([\s\S]*?)<\/path>/);
         const contentMatch = content.match(/<content>([\s\S]*?)<\/content>/);
 
         if (!writePathMatch || !writePathMatch[1]) {
@@ -149,14 +160,14 @@ function parseParams(toolType: ToolType, content: string | undefined): Result<To
         return success({
           type: "write_file",
           params: {
-            path: writePathMatch[1],
-            content: contentMatch[1],
+            path: writePathMatch[1].trim(),
+            content: contentMatch[1].trim(),
           },
         });
       }
 
       case "ask_question": {
-        const questionMatch = content.match(/<question>(.*?)<\/question>/);
+        const questionMatch = content.match(/<question>([\s\S]*?)<\/question>/);
 
         if (!questionMatch || !questionMatch[1]) {
           return failure({
@@ -167,12 +178,12 @@ function parseParams(toolType: ToolType, content: string | undefined): Result<To
 
         return success({
           type: "ask_question",
-          params: { question: questionMatch[1] },
+          params: { question: questionMatch[1].trim() },
         });
       }
 
       case "execute_command": {
-        const commandMatch = content.match(/<command>(.*?)<\/command>/);
+        const commandMatch = content.match(/<command>([\s\S]*?)<\/command>/);
 
         if (!commandMatch || !commandMatch[1]) {
           return failure({
@@ -183,13 +194,13 @@ function parseParams(toolType: ToolType, content: string | undefined): Result<To
 
         return success({
           type: "execute_command",
-          params: { command: commandMatch[1] },
+          params: { command: commandMatch[1].trim() },
         });
       }
 
       case "complete": {
-        const resultMatchR = content.match(/<r>(.*?)<\/r>/);
-        const resultMatchResult = content.match(/<result>(.*?)<\/result>/);
+        const resultMatchR = content.match(/<r>([\s\S]*?)<\/r>/);
+        const resultMatchResult = content.match(/<result>([\s\S]*?)<\/result>/);
         const resultMatch = resultMatchR || resultMatchResult;
 
         if (!resultMatch || !resultMatch[1]) {
@@ -201,15 +212,14 @@ function parseParams(toolType: ToolType, content: string | undefined): Result<To
 
         return success({
           type: "complete",
-          params: { result: resultMatch[1] },
+          params: { result: resultMatch[1].trim() },
         });
       }
     }
   } catch (error) {
     return failure({
-      message: `Error parsing parameters for ${toolType}: ${error instanceof Error ? error.message : String(error)}`,
+      message: error instanceof Error ? error.message : "Failed to parse tool parameters",
       code: "PARSE_ERROR",
-      error,
     });
   }
 }
@@ -217,18 +227,19 @@ function parseParams(toolType: ToolType, content: string | undefined): Result<To
 /**
  * ツールを実行する
  */
-async function executeTool(tool: Tool): Promise<ToolResult> {
+async function executeTool(tool: Tool, fsAdapter?: FSAdapter): Promise<ToolResult> {
+  const deps = fsAdapter ? { fsAdapter } : {};
   switch (tool.type) {
     case "list_file":
-      return tools.listFile(tool.params);
+      return tools.listFile(tool.params, deps);
     case "read_file":
-      return tools.readFile(tool.params);
+      return tools.readFile(tool.params, deps);
     case "write_file":
-      return tools.writeFile(tool.params);
+      return tools.writeFile(tool.params, deps);
     case "ask_question":
-      return tools.askQuestion(tool.params);
+      return tools.askQuestion(tool.params, deps);
     case "execute_command":
-      return tools.executeCommand(tool.params);
+      return tools.executeCommand(tool.params, deps);
     case "complete":
       return tools.complete(tool.params);
   }

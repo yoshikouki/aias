@@ -33,16 +33,25 @@ export class InMemoryFSAdapter implements FSAdapter {
   /**
    * ディレクトリの内容を読み込む
    */
-  async readdir(
-    path: string,
-    _options?: { recursive?: boolean },
-  ): Promise<(string | Dirent)[]> {
-    const files = Array.from(this.files.keys())
-      .filter((filePath) => filePath.startsWith(path))
-      .map((filePath) => filePath.slice(path.length + 1).split("/")[0])
-      .filter((name): name is string => name !== undefined && name.length > 0);
+  async readdir(path: string, options?: { recursive?: boolean }): Promise<(string | Dirent)[]> {
+    if (path === ".") {
+      return Array.from(this.files.keys());
+    }
 
-    return [...new Set(files)];
+    // パスがディレクトリの場合は、そのディレクトリ内のファイルを返す
+    const dirFiles = Array.from(this.files.keys()).filter((filePath) => {
+      if (options?.recursive) {
+        return filePath.startsWith(`${path}/`);
+      }
+      const parts = filePath.split("/");
+      return parts.length > 1 && parts[0] === path;
+    });
+
+    if (dirFiles.length === 0) {
+      throw new Error(`ENOENT: no such file or directory, scandir '${path}'`);
+    }
+
+    return dirFiles;
   }
 
   /**

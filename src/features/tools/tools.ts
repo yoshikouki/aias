@@ -44,16 +44,13 @@ export async function listFile(
           return file;
         }
         // Direntオブジェクトの場合
-        // @ts-ignore - Direntオブジェクトの場合nameプロパティが存在する
         if (file && typeof file === "object" && "name" in file) {
-          // @ts-ignore
           return file.name;
         }
         return String(file);
       })
       .join("\n");
-    const result = `Directory ${params.path} contents:\n${filesStr}`;
-    return success(result);
+    return success(`Directory ${params.path} contents:\n${filesStr}`);
   } catch (error) {
     return failure({
       code: "LIST_FILE_ERROR",
