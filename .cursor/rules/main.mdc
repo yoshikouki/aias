@@ -399,7 +399,7 @@ TypeScriptでのコーディングにおける一般的なベストプラクテ�
 
 3. アダプターパターン（外部依存の抽象化）
   ```ts
-  // 抽象化
+  // 抽象化されたインターフェイス
   type Fetcher = <T>(path: string) => Promise<ApiResult<T>>;
 
   // 実装
@@ -429,17 +429,19 @@ TypeScriptでのコーディングにおける一般的なベストプラクテ�
     };
   }
 
-  // 利用
-  class ApiClient {
-    constructor(
-      private readonly getData: Fetcher,
-      private readonly baseUrl: string,
-    ) {}
-
-    async getUser(id: string): Promise<ApiResult<User>> {
-      return await this.getData(`${this.baseUrl}/users/${id}`);
-    }
+  // メインの関数
+  function createApiClient(
+    baseUrl: string,
+    getData: Fetcher = createFetcher({})
+  ) {
+    return async function getUser(id: string): Promise<ApiResult<User>> {
+      return await getData(`${baseUrl}/users/${id}`);
+    };
   }
+
+  // 使用例
+  const getUser = createApiClient("https://api.example.com");
+  const result = await getUser("123");
   ```
 
 ### 実装の選択基準
