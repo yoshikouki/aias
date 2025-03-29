@@ -2,27 +2,20 @@ import { AiasAgent } from "./features/agent";
 import { createDiscordAdapter } from "./features/chat/adapters/discord";
 import { createChatSkill } from "./features/chat/skill";
 import { createCodingSkill } from "./features/coding/skill";
+import { loadConfig } from "./features/config";
 import { logger } from "./lib/logger";
 
 async function main() {
-  const apiKey = process.env.GEMINI_API_KEY;
-  const discordToken = process.env.DISCORD_TOKEN;
-  const discordClientId = process.env.DISCORD_CLIENT_ID;
-  const discordChannelId = process.env.DISCORD_CHANNEL_ID;
-
-  if (!apiKey) {
-    logger.error("GEMINI_API_KEY environment variable is not set");
+  const configResult = loadConfig();
+  if (!configResult.ok) {
+    logger.error(configResult.error.message);
     process.exit(1);
   }
-
-  if (!discordToken || !discordClientId || !discordChannelId) {
-    logger.error("Discord environment variables are not set");
-    process.exit(1);
-  }
+  const config = configResult.result;
 
   // Initialize skills
-  const codingSkill = createCodingSkill(apiKey, logger);
-  const chatSkill = createChatSkill({ apiKey, logger });
+  const codingSkill = createCodingSkill({ apiKey: config.gemini.apiKey, logger });
+  const chatSkill = createChatSkill({ apiKey: config.gemini.apiKey, logger });
 
   // Initialize the main agent
   const agent = new AiasAgent({
@@ -33,11 +26,8 @@ async function main() {
 
   // Initialize Discord adapter
   const discordAdapter = createDiscordAdapter({
-    token: discordToken,
-    clientId: discordClientId,
-    channelId: discordChannelId,
+    token: config.discord.token,
     logger,
-    agent,
   });
 
   try {

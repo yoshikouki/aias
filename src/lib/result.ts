@@ -1,5 +1,3 @@
-import type { ToolError } from "../features/tools/types";
-
 export type Success<T> = { ok: true; result: T };
 export type Failure<E> = { ok: false; error: E };
 export type Result<T, E> = Success<T> | Failure<E>;
@@ -13,19 +11,15 @@ export function success<T>(result: T): Success<T> {
   return { ok: true, result };
 }
 
-export type FailureParams =
-  | ToolError
-  | (ToolError & {
-      error?: unknown;
-    });
+export type FailureParams<E extends { message: string }> = E | (E & { error?: unknown });
 
 /**
  * 失敗結果を生成するヘルパー関数
  * @param params エラーパラメータ
  * @returns Failure型のオブジェクト
  */
-export function failure(params: FailureParams): Failure<ToolError> {
-  // 通常のToolErrorの場合（error プロパティがない場合）は早期リターン
+export function failure<E extends { message: string }>(params: FailureParams<E>): Failure<E> {
+  // 通常のエラーの場合（error プロパティがない場合）は早期リターン
   if (!("error" in params) || params.error === undefined) {
     return { ok: false, error: params };
   }
@@ -33,12 +27,12 @@ export function failure(params: FailureParams): Failure<ToolError> {
   // error プロパティがある場合の処理
   const errorDetail =
     params.error instanceof Error ? params.error.message : String(params.error);
-  // ToolError型に合う形で返す
+  // エラー型に合う形で返す
   return {
     ok: false,
     error: {
+      ...params,
       message: `${params.message}: ${errorDetail}`,
-      code: params.code,
     },
   };
 }

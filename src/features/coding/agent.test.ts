@@ -235,11 +235,12 @@ describe("CodingAgent", () => {
 
       test("必須の環境変数が設定されていない場合はエラーを投げること", () => {
         const originalEnv = { ...process.env };
-        process.env.ANTHROPIC_API_KEY = undefined;
-        process.env.GEMINI_API_KEY = undefined;
+        process.env = {};
         const mockLogger = createMockLogger();
 
-        expect(() => CodingAgent.fromEnv("anthropic", mockLogger)).toThrow("Required");
+        expect(() => CodingAgent.fromEnv("anthropic", mockLogger)).toThrow(
+          "ANTHROPIC_API_KEY or GEMINI_API_KEY is required",
+        );
         process.env = originalEnv;
       });
     });
