@@ -4,6 +4,7 @@
 export interface Logger {
   log(message: string): void;
   error(message: string, error?: unknown): void;
+  warn(message: string, warning?: unknown): void;
 }
 
 /**
@@ -20,6 +21,13 @@ export const createConsoleLogger = (): Logger => ({
       console.error(message);
     }
   },
+  warn(message: string, warning?: unknown): void {
+    if (warning) {
+      console.warn(message, warning instanceof Error ? warning.message : String(warning));
+    } else {
+      console.warn(message);
+    }
+  },
 });
 
 /**
@@ -32,6 +40,9 @@ export const createSilentLogger = (): Logger => ({
   error(_message: string, _error?: unknown): void {
     // エラーログ出力しない
   },
+  warn(_message: string, _warning?: unknown): void {
+    // 警告ログ出力しない
+  },
 });
 
 /**
@@ -40,18 +51,24 @@ export const createSilentLogger = (): Logger => ({
 export const createInMemoryLogger = (): Logger & {
   messages: string[];
   errors: Array<{ message: string; error?: unknown }>;
+  warnings: Array<{ message: string; warning?: unknown }>;
 } => {
   const messages: string[] = [];
   const errors: Array<{ message: string; error?: unknown }> = [];
+  const warnings: Array<{ message: string; warning?: unknown }> = [];
 
   return {
     messages,
     errors,
+    warnings,
     log(message: string): void {
       messages.push(message);
     },
     error(message: string, error?: unknown): void {
       errors.push({ message, error });
+    },
+    warn(message: string, warning?: unknown): void {
+      warnings.push({ message, warning });
     },
   };
 };

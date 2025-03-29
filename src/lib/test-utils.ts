@@ -7,14 +7,17 @@ import type { Logger } from "./logger";
 export const createMockLogger = (): Logger & {
   logs: string[];
   errors: string[];
+  warnings: string[];
   clear: () => void;
 } => {
   const logs: string[] = [];
   const errors: string[] = [];
+  const warnings: string[] = [];
 
   return {
     logs,
     errors,
+    warnings,
     log(message: string): void {
       logs.push(message);
     },
@@ -25,9 +28,19 @@ export const createMockLogger = (): Logger & {
         errors.push(message);
       }
     },
+    warn(message: string, warning?: unknown): void {
+      if (warning) {
+        warnings.push(
+          `${message} ${warning instanceof Error ? warning.message : String(warning)}`,
+        );
+      } else {
+        warnings.push(message);
+      }
+    },
     clear(): void {
       logs.length = 0;
       errors.length = 0;
+      warnings.length = 0;
     },
   };
 };

@@ -16,7 +16,8 @@
   "dependencies": {
     "@ai-sdk/anthropic": "^1.2.1",
     "@ai-sdk/google": "^1.2.2",
-    "ai": "^4.2.1"
+    "ai": "^4.2.1",
+    "discord.js": "^14.18.0"
   },
   "devDependencies": {
     "@biomejs/biome": "1.9.4",

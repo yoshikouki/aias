@@ -4,6 +4,7 @@ import {
   createRateLimitedAIProvider,
   loadAIProviderConfig,
 } from "./features/ai-provider";
+import type { ChatSkill } from "./features/chat/skill";
 import type { CodingSkill } from "./features/coding/skill";
 import type { RateLimitConfig } from "./features/rate-limit/types";
 import type { Logger } from "./lib/logger";
@@ -56,6 +57,7 @@ Always use one of the above tools. Do not respond directly without using a tool.
 
 export interface AiasAgentConfig {
   codingSkill: CodingSkill;
+  chatSkill: ChatSkill;
   logger: Logger;
 }
 
