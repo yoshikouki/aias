@@ -1,12 +1,13 @@
-import type { AiasAgent, Message, Response } from "../../../agent";
 import type { Logger } from "../../../lib/logger";
+import type { Message, Response } from "../../agent/types";
 
 /**
  * チャットアダプターのインターフェイス
  */
 export interface ChatAdapter {
-  handleMessage(message: Message): Promise<Response>;
   start(): Promise<void>;
+  stop(): Promise<void>;
+  setMessageHandler(handler: (message: Message) => Promise<Response>): void;
 }
 
 /**
@@ -15,7 +16,6 @@ export interface ChatAdapter {
 export interface ChatAdapterConfig {
   // 共通の設定を定義
   logger: Logger;
-  agent: AiasAgent;
 }
 
 /**

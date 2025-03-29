@@ -1,4 +1,4 @@
-import { AiasAgent } from "./agent";
+import { AiasAgent } from "./features/agent";
 import { createDiscordAdapter } from "./features/chat/adapters/discord";
 import { createChatSkill } from "./features/chat/skill";
 import { createCodingSkill } from "./features/coding/skill";

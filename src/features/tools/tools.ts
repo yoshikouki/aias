@@ -1,8 +1,8 @@
 import { createInterface } from "node:readline";
-import { type CommandAdapter, NodeCommandAdapter } from "./lib/commandAdapter";
-import { type FSAdapter, defaultFSAdapter } from "./lib/fsAdapter";
-import { type Logger, logger as defaultLogger } from "./lib/logger";
-import { failure, success } from "./lib/result";
+import { type CommandAdapter, NodeCommandAdapter } from "../../lib/commandAdapter";
+import { type FSAdapter, defaultFSAdapter } from "../../lib/fsAdapter";
+import { type Logger, logger as defaultLogger } from "../../lib/logger";
+import { failure, success } from "../../lib/result";
 import type {
   AskQuestionParams,
   CompleteParams,

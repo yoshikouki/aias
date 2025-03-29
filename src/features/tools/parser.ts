@@ -1,4 +1,4 @@
-import { failure, success } from "./lib/result";
+import { failure, success } from "../../lib/result";
 import * as tools from "./tools";
 import type {
   Result,

@@ -1,15 +1,13 @@
+import type { Logger } from "../../lib/logger";
 import {
   type AIProvider,
   createAIProvider,
   createRateLimitedAIProvider,
   loadAIProviderConfig,
-} from "./features/ai-provider";
-import type { ChatSkill } from "./features/chat/skill";
-import type { CodingSkill } from "./features/coding/skill";
-import type { RateLimitConfig } from "./features/rate-limit/types";
-import type { Logger } from "./lib/logger";
-import { parseAndExecuteTool } from "./parser";
-import type { ToolResult } from "./types";
+} from "../ai-provider";
+import type { RateLimitConfig } from "../rate-limit/types";
+import { parseAndExecuteTool } from "../tools/parser";
+import type { ToolResult } from "../tools/types";
 
 const systemPrompt = `You are a coding agent. Use the following tools to complete tasks:
 
@@ -54,12 +52,6 @@ Indicate task completion.
 </complete>
 
 Always use one of the above tools. Do not respond directly without using a tool.`;
-
-export interface AiasAgentConfig {
-  codingSkill: CodingSkill;
-  chatSkill: ChatSkill;
-  logger: Logger;
-}
 
 export interface Message {
   content: string;
@@ -176,23 +168,5 @@ export class CodingAgent {
         ? createRateLimitedAIProvider(provider, config.rateLimit, config.rateLimitKey)
         : provider;
     return new CodingAgent(finalProvider, logger);
-  }
-}
-
-export class AiasAgent {
-  constructor(private readonly config: AiasAgentConfig) {}
-
-  async handleMessage(message: Message): Promise<Response> {
-    try {
-      // TODO: Implement skill selection logic based on message content
-      // For now, we'll just use the chat skill
-      return await this.config.chatSkill.handleMessage(message);
-    } catch (error) {
-      this.config.logger.error("Error handling message:", error);
-      return {
-        content: "Sorry, I encountered an error while processing your message.",
-        type: "error",
-      };
-    }
   }
 }

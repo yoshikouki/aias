@@ -1,10 +1,10 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
+import { InMemoryFSAdapter } from "../../lib/in-memory-fs-adapter";
+import { createMockLogger } from "../../lib/test-utils";
+import { InMemoryAIProvider } from "../ai-provider/in-memory-provider";
+import * as tools from "../tools/tools";
+import type { ListFileParams, ReadFileParams, WriteFileParams } from "../tools/types";
 import { CodingAgent } from "./agent";
-import { InMemoryAIProvider } from "./features/ai-provider/in-memory-provider";
-import { InMemoryFSAdapter } from "./lib/in-memory-fs-adapter";
-import {} from "./lib/result";
-import { createMockLogger } from "./lib/test-utils";
-import * as tools from "./tools";
 
 describe("CodingAgent", () => {
   let aiProvider: InMemoryAIProvider;
@@ -20,7 +20,7 @@ describe("CodingAgent", () => {
     agent = new CodingAgent(aiProvider, mockLogger);
 
     // ツールの依存関係を設定
-    vi.spyOn(tools, "listFile").mockImplementation(async (params) => {
+    vi.spyOn(tools, "listFile").mockImplementation(async (params: ListFileParams) => {
       const files = await fsAdapter.readdir(params.path, { recursive: params.recursive });
       const filesStr = files
         .map((file) => {
@@ -38,7 +38,7 @@ describe("CodingAgent", () => {
       return { ok: true, result: `Directory ${params.path} contents:\n${filesStr}` };
     });
 
-    vi.spyOn(tools, "readFile").mockImplementation(async (params) => {
+    vi.spyOn(tools, "readFile").mockImplementation(async (params: ReadFileParams) => {
       try {
         const content = await fsAdapter.readFile(params.path, "utf-8");
         return { ok: true, result: content };
@@ -54,7 +54,7 @@ describe("CodingAgent", () => {
       }
     });
 
-    vi.spyOn(tools, "writeFile").mockImplementation(async (params) => {
+    vi.spyOn(tools, "writeFile").mockImplementation(async (params: WriteFileParams) => {
       try {
         await fsAdapter.writeFile(params.path, params.content, "utf-8");
         return { ok: true, result: `Successfully wrote to ${params.path}` };

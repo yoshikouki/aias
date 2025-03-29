@@ -1,6 +1,6 @@
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
-import type { Message, Response } from "../../agent";
 import type { Logger } from "../../lib/logger";
+import type { Message, Response } from "../agent/types";
 
 export interface ChatSkillConfig {
   apiKey: string;

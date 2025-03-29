@@ -1,17 +1,11 @@
-import {
-  Client,
-  type Message as DiscordMessage,
-  Events,
-  GatewayIntentBits,
-  type TextChannel,
-} from "discord.js";
-import type { Message, Response } from "../../../agent";
-import type { ChatAdapter, ChatAdapterConfig } from "./types";
+import { Client, Events, GatewayIntentBits } from "discord.js";
+import type { Logger } from "../../../lib/logger";
+import type { Message as AiasMessage, Response } from "../../agent/types";
+import type { ChatAdapter } from "./types";
 
-interface DiscordAdapterConfig extends ChatAdapterConfig {
+export interface DiscordAdapterConfig {
   token: string;
-  clientId: string;
-  channelId: string;
+  logger: Logger;
 }
 
 export function createDiscordAdapter(config: DiscordAdapterConfig): ChatAdapter {
@@ -23,75 +17,47 @@ export function createDiscordAdapter(config: DiscordAdapterConfig): ChatAdapter 
     ],
   });
 
-  async function handleMessage(message: Message): Promise<Response> {
-    try {
-      // Discordクライアントが準備できていない場合はエラー
-      if (!client.isReady()) {
-        throw new Error("Discord client is not ready");
-      }
+  let messageHandler: ((message: AiasMessage) => Promise<Response>) | null = null;
 
-      // メッセージを送信
-      if (!message.channelId) {
-        throw new Error("Channel ID is required");
-      }
-
-      const channel = await client.channels.fetch(message.channelId);
-      if (!channel?.isTextBased()) {
-        throw new Error("Channel is not text-based");
-      }
-
-      await (channel as TextChannel).send(message.content);
-      return {
-        content: "Message sent successfully",
-        type: "text",
-      };
-    } catch (error) {
-      config.logger.error("Error in Discord adapter:", error);
-      return {
-        content: "Failed to send message to Discord",
-        type: "error",
-      };
-    }
-  }
-
-  // クライアントの初期化とイベントハンドリング
   client.on(Events.ClientReady, () => {
-    config.logger.log(`Logged in as ${client.user?.tag}`);
+    config.logger.log("Discord client is ready!");
   });
 
-  // メッセージ受信のハンドリング
-  client.on(Events.MessageCreate, async (message: DiscordMessage) => {
-    if (message.author.bot || message.channelId !== config.channelId) {
+  client.on(Events.MessageCreate, async (message) => {
+    if (message.author.bot) return;
+
+    if (!messageHandler) {
+      config.logger.error("Message handler not set");
       return;
     }
 
     try {
-      const agentMessage: Message = {
+      const response = await messageHandler({
         content: message.content,
         role: "user",
-        userId: message.author.id,
-        channelId: message.channelId,
-      };
+      });
 
-      const response = await config.agent.handleMessage(agentMessage);
+      if (response.type === "error") {
+        await message.reply(response.content);
+        return;
+      }
+
       await message.reply(response.content);
     } catch (error) {
-      config.logger.error("Error handling Discord message:", error);
+      config.logger.error("Error handling message:", error);
       await message.reply("Sorry, I encountered an error while processing your message.");
     }
   });
 
-  async function start(): Promise<void> {
-    try {
-      await client.login(config.token);
-    } catch (error) {
-      config.logger.error("Failed to login to Discord:", error);
-      throw error;
-    }
-  }
-
   return {
-    handleMessage,
-    start,
+    async start() {
+      await client.login(config.token);
+    },
+    async stop() {
+      await client.destroy();
+    },
+    setMessageHandler(handler) {
+      messageHandler = handler;
+    },
   };
 }

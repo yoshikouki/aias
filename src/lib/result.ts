@@ -1,4 +1,8 @@
-import type { Failure, Success, ToolError } from "../types";
+import type { ToolError } from "../features/tools/types";
+
+export type Success<T> = { ok: true; result: T };
+export type Failure<E> = { ok: false; error: E };
+export type Result<T, E> = Success<T> | Failure<E>;
 
 /**
  * 成功結果を生成するヘルパー関数
