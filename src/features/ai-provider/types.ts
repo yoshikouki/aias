@@ -1,5 +1,3 @@
-import type { RateLimitConfig } from "../rate-limit/types";
-
 /**
  * AIプロバイダーのインターフェイス
  */
@@ -23,6 +21,4 @@ export interface AIProviderConfig {
   apiKey: string;
   model?: string;
   temperature?: number;
-  rateLimit?: RateLimitConfig;
-  rateLimitKey?: string;
 }

@@ -121,39 +121,15 @@ describe("CodingAgent", () => {
   });
 
   describe("ファクトリーメソッド", () => {
-    test("fromAnthropicApiKeyでレートリミット付きのエージェントを作成できること", () => {
-      const rateLimitConfig = {
-        maxRequests: 10,
-        windowMs: 60000,
-      };
-      const rateLimitKey = "test-user";
+    test("fromAnthropicApiKeyでエージェントを作成できること", () => {
       const logger = new InMemoryLogger();
-
-      const agent = CodingAgent.fromAnthropicApiKey(
-        "test-api-key",
-        logger,
-        rateLimitConfig,
-        rateLimitKey,
-      );
-
+      const agent = CodingAgent.fromAnthropicApiKey("test-api-key", logger);
       expect(agent).toBeInstanceOf(CodingAgent);
     });
 
-    test("fromGoogleApiKeyでレートリミット付きのエージェントを作成できること", () => {
-      const rateLimitConfig = {
-        maxRequests: 10,
-        windowMs: 60000,
-      };
-      const rateLimitKey = "test-user";
+    test("fromGoogleApiKeyでエージェントを作成できること", () => {
       const logger = new InMemoryLogger();
-
-      const agent = CodingAgent.fromGoogleApiKey(
-        "test-api-key",
-        logger,
-        rateLimitConfig,
-        rateLimitKey,
-      );
-
+      const agent = CodingAgent.fromGoogleApiKey("test-api-key", logger);
       expect(agent).toBeInstanceOf(CodingAgent);
     });
 

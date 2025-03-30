@@ -1,12 +1,6 @@
 import { type FSAdapter, defaultFSAdapter } from "../../lib/fsAdapter";
 import type { Logger } from "../../lib/logger";
-import {
-  type AIProvider,
-  createAIProvider,
-  createRateLimitedAIProvider,
-  loadAIProviderConfig,
-} from "../ai-provider";
-import type { RateLimitConfig } from "../rate-limit/types";
+import { type AIProvider, createAIProvider, loadAIProviderConfig } from "../ai-provider";
 import { parseAndExecuteTool } from "../tools/parser";
 import type { ToolResult } from "../tools/types";
 
@@ -131,35 +125,17 @@ export class CodingAgent {
   /**
    * ファクトリーメソッド: Anthropic APIキーからエージェントを作成
    */
-  static fromAnthropicApiKey(
-    apiKey: string,
-    logger: Logger,
-    rateLimitConfig?: RateLimitConfig,
-    rateLimitKey?: string,
-  ): CodingAgent {
+  static fromAnthropicApiKey(apiKey: string, logger: Logger): CodingAgent {
     const provider = createAIProvider("anthropic", { apiKey });
-    const finalProvider =
-      rateLimitConfig && rateLimitKey
-        ? createRateLimitedAIProvider(provider, rateLimitConfig, rateLimitKey)
-        : provider;
-    return new CodingAgent(finalProvider, logger);
+    return new CodingAgent(provider, logger);
   }
 
   /**
    * ファクトリーメソッド: Google AI APIキーからエージェントを作成
    */
-  static fromGoogleApiKey(
-    apiKey: string,
-    logger: Logger,
-    rateLimitConfig?: RateLimitConfig,
-    rateLimitKey?: string,
-  ): CodingAgent {
+  static fromGoogleApiKey(apiKey: string, logger: Logger): CodingAgent {
     const provider = createAIProvider("google", { apiKey });
-    const finalProvider =
-      rateLimitConfig && rateLimitKey
-        ? createRateLimitedAIProvider(provider, rateLimitConfig, rateLimitKey)
-        : provider;
-    return new CodingAgent(finalProvider, logger);
+    return new CodingAgent(provider, logger);
   }
 
   /**
@@ -169,13 +145,7 @@ export class CodingAgent {
     const config = loadAIProviderConfig();
     const provider = createAIProvider(type, {
       apiKey: type === "anthropic" ? config.anthropicApiKey : config.geminiApiKey,
-      rateLimit: config.rateLimit,
-      rateLimitKey: config.rateLimitKey,
     });
-    const finalProvider =
-      config.rateLimit && config.rateLimitKey
-        ? createRateLimitedAIProvider(provider, config.rateLimit, config.rateLimitKey)
-        : provider;
-    return new CodingAgent(finalProvider, logger);
+    return new CodingAgent(provider, logger);
   }
 }
