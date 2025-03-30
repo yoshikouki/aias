@@ -8,6 +8,7 @@ describe("parseAndExecuteTool", () => {
   // テストの前にファイルシステムをセットアップ
   fsAdapter.writeFile("test/file1.txt", "test content", "utf-8");
   fsAdapter.writeFile("test/file2.txt", "test content", "utf-8");
+  fsAdapter.writeFile("test.txt", "test content", "utf-8");
 
   test("空の文字列を渡すとエラーを返すこと", async () => {
     const result = await parseAndExecuteTool("");
@@ -54,6 +55,7 @@ describe("parseAndExecuteTool", () => {
       `<read_file>
         <path>test.txt</path>
       </read_file>`,
+      { fsAdapter },
     );
     expect(result.toolResult.ok).toBe(true);
     if (result.toolResult.ok) {
@@ -67,6 +69,7 @@ describe("parseAndExecuteTool", () => {
         <path>test.txt</path>
         <content>test content</content>
       </write_file>`,
+      { fsAdapter },
     );
     expect(result.toolResult.ok).toBe(true);
     if (result.toolResult.ok) {
