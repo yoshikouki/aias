@@ -8,9 +8,7 @@ const defaultEnvAdapter: EnvAdapter = {
 
 export function loadConfig(envAdapter: EnvAdapter = defaultEnvAdapter): ConfigResult {
   const env = Object.fromEntries(
-    ["GEMINI_API_KEY", "DISCORD_TOKEN", "DISCORD_CLIENT_ID", "DISCORD_CHANNEL_ID"].map(
-      (key) => [key, envAdapter.get(key)],
-    ),
+    ["GEMINI_API_KEY", "DISCORD_TOKEN"].map((key) => [key, envAdapter.get(key)]),
   );
 
   const result = envSchema.safeParse(env);
@@ -31,8 +29,6 @@ export function loadConfig(envAdapter: EnvAdapter = defaultEnvAdapter): ConfigRe
     },
     discord: {
       token: validatedEnv.DISCORD_TOKEN,
-      clientId: String(validatedEnv.DISCORD_CLIENT_ID),
-      channelId: String(validatedEnv.DISCORD_CHANNEL_ID),
     },
   });
 }

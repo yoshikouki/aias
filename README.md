@@ -77,8 +77,6 @@ bun run index.ts
 
 - `GEMINI_API_KEY`: Google AI APIキー
 - `DISCORD_TOKEN`: Discordボットトークン
-- `DISCORD_CLIENT_ID`: DiscordクライアントID
-- `DISCORD_CHANNEL_ID`: 使用するDiscordチャンネルID
 
 ## 技術スタック
 
