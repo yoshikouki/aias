@@ -11,6 +11,11 @@ interface InMemoryFile {
  */
 export class InMemoryFSAdapter implements FSAdapter {
   private files: Map<string, InMemoryFile> = new Map();
+  private readonly readOnly: boolean;
+
+  constructor(options: { readOnly?: boolean } = {}) {
+    this.readOnly = options.readOnly ?? false;
+  }
 
   /**
    * ファイルを読み込む
@@ -27,6 +32,9 @@ export class InMemoryFSAdapter implements FSAdapter {
    * ファイルを書き込む
    */
   async writeFile(path: string, data: string, encoding: BufferEncoding): Promise<void> {
+    if (this.readOnly) {
+      throw new Error("Permission denied: filesystem is read-only");
+    }
     this.files.set(path, { content: data, encoding });
   }
 
@@ -35,17 +43,28 @@ export class InMemoryFSAdapter implements FSAdapter {
    */
   async readdir(path: string, options?: { recursive?: boolean }): Promise<(string | Dirent)[]> {
     if (path === ".") {
-      return Array.from(this.files.keys());
+      return Array.from(this.files.keys())
+        .map((filePath) => {
+          const parts = filePath.split("/");
+          return parts[0];
+        })
+        .filter((name): name is string => name !== undefined);
     }
 
     // パスがディレクトリの場合は、そのディレクトリ内のファイルを返す
-    const dirFiles = Array.from(this.files.keys()).filter((filePath) => {
-      if (options?.recursive) {
-        return filePath.startsWith(`${path}/`);
-      }
-      const parts = filePath.split("/");
-      return parts.length > 1 && parts[0] === path;
-    });
+    const dirFiles = Array.from(this.files.keys())
+      .filter((filePath) => {
+        if (options?.recursive) {
+          return filePath.startsWith(`${path}/`);
+        }
+        const parts = filePath.split("/");
+        return parts.length > 1 && parts[0] === path;
+      })
+      .map((filePath) => {
+        const parts = filePath.split("/");
+        return parts[1];
+      })
+      .filter((name): name is string => name !== undefined);
 
     if (dirFiles.length === 0) {
       throw new Error(`ENOENT: no such file or directory, scandir '${path}'`);

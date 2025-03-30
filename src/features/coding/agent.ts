@@ -1,3 +1,4 @@
+import { type FSAdapter, defaultFSAdapter } from "../../lib/fsAdapter";
 import type { Logger } from "../../lib/logger";
 import {
   type AIProvider,
@@ -74,6 +75,7 @@ export class CodingAgent {
   constructor(
     private readonly aiProvider: AIProvider,
     private readonly logger: Logger,
+    private readonly fsAdapter: FSAdapter = defaultFSAdapter,
   ) {}
 
   /**
@@ -93,15 +95,22 @@ export class CodingAgent {
       this.messages.push({ role: "assistant", content: assistantResponse });
 
       // ツールを解析して実行
-      const { toolResult, isComplete: complete } = await parseAndExecuteTool(assistantResponse);
+      const { toolResult, isComplete: complete } = await parseAndExecuteTool(
+        assistantResponse,
+        {
+          logger: this.logger,
+          fsAdapter: this.fsAdapter,
+        },
+      );
 
       // 結果をユーザーに表示
       this.displayToolResult(toolResult);
 
       // 結果をメッセージに追加
+      const toolResultMessage = toolResult.ok ? toolResult.result : toolResult.error.message;
       this.messages.push({
         role: "user",
-        content: `[Tool Result] ${toolResult.ok ? toolResult.result : toolResult.error.message}`,
+        content: `[Tool Result] ${toolResultMessage}`,
       });
 
       isComplete = complete;

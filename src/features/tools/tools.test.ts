@@ -1,9 +1,10 @@
-import { beforeEach, describe, expect, test, vi } from "vitest";
+import { beforeEach, describe, expect, test } from "vitest";
+import type { FSAdapter } from "../../lib/fsAdapter";
 import { InMemoryFSAdapter } from "../../lib/in-memory-fs-adapter";
 import { listFile, readFile, writeFile } from "./tools";
 
 describe("tools", () => {
-  let fsAdapter: InMemoryFSAdapter;
+  let fsAdapter: FSAdapter;
 
   beforeEach(() => {
     fsAdapter = new InMemoryFSAdapter();
@@ -64,14 +65,14 @@ describe("tools", () => {
     });
 
     test("書き込みに失敗するとエラーを返すこと", async () => {
-      // 読み取り専用のファイルシステムをシミュレート
-      vi.spyOn(fsAdapter, "writeFile").mockRejectedValueOnce(new Error("Permission denied"));
+      // 読み取り専用のファイルシステムを使用
+      const readOnlyFs = new InMemoryFSAdapter({ readOnly: true });
       const result = await writeFile(
         {
           path: "test.txt",
           content: "test content",
         },
-        { fsAdapter },
+        { fsAdapter: readOnlyFs },
       );
       expect(result.ok).toBe(false);
       if (!result.ok) {

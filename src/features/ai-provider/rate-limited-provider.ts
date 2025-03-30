@@ -12,8 +12,9 @@ export class RateLimitedAIProvider implements AIProvider {
     private readonly provider: AIProvider,
     rateLimitConfig: RateLimitConfig,
     private readonly key: string,
+    rateLimiter?: RateLimiter,
   ) {
-    this.rateLimiter = new RateLimiter(rateLimitConfig);
+    this.rateLimiter = rateLimiter || new RateLimiter(rateLimitConfig);
   }
 
   async generateResponse(messages: Message[]): Promise<string> {
@@ -37,6 +38,7 @@ export function createRateLimitedAIProvider(
   provider: AIProvider,
   rateLimitConfig: RateLimitConfig,
   key: string,
+  rateLimiter?: RateLimiter,
 ): AIProvider {
-  return new RateLimitedAIProvider(provider, rateLimitConfig, key);
+  return new RateLimitedAIProvider(provider, rateLimitConfig, key, rateLimiter);
 }

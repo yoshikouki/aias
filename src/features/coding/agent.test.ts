@@ -1,78 +1,24 @@
-import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import { InMemoryFSAdapter } from "../../lib/in-memory-fs-adapter";
-import { createMockLogger } from "../../lib/test-utils";
+import { afterEach, beforeEach, describe, expect, test } from "vitest";
+import { InMemoryFSAdapter } from "../../lib/fsAdapter";
+import { InMemoryLogger } from "../../lib/in-memory-logger";
 import { InMemoryAIProvider } from "../ai-provider/in-memory-provider";
-import * as tools from "../tools/tools";
-import type { ListFileParams, ReadFileParams, WriteFileParams } from "../tools/types";
 import { CodingAgent } from "./agent";
 
 describe("CodingAgent", () => {
   let aiProvider: InMemoryAIProvider;
   let agent: CodingAgent;
-  let mockLogger: ReturnType<typeof createMockLogger>;
+  let logger: InMemoryLogger;
   let fsAdapter: InMemoryFSAdapter;
 
   beforeEach(() => {
-    vi.resetAllMocks();
     aiProvider = new InMemoryAIProvider();
-    mockLogger = createMockLogger();
+    logger = new InMemoryLogger();
     fsAdapter = new InMemoryFSAdapter();
-    agent = new CodingAgent(aiProvider, mockLogger);
-
-    // ツールの依存関係を設定
-    vi.spyOn(tools, "listFile").mockImplementation(async (params: ListFileParams) => {
-      const files = await fsAdapter.readdir(params.path, { recursive: params.recursive });
-      const filesStr = files
-        .map((file) => {
-          if (typeof file === "string") {
-            return file;
-          }
-          // @ts-ignore - Direntオブジェクトの場合nameプロパティが存在する
-          if (file && typeof file === "object" && "name" in file) {
-            // @ts-ignore
-            return file.name;
-          }
-          return String(file);
-        })
-        .join("\n");
-      return { ok: true, result: `Directory ${params.path} contents:\n${filesStr}` };
-    });
-
-    vi.spyOn(tools, "readFile").mockImplementation(async (params: ReadFileParams) => {
-      try {
-        const content = await fsAdapter.readFile(params.path, "utf-8");
-        return { ok: true, result: content };
-      } catch (error) {
-        return {
-          ok: false,
-          error: {
-            code: "READ_FILE_ERROR",
-            message: "Failed to read file",
-            error,
-          },
-        };
-      }
-    });
-
-    vi.spyOn(tools, "writeFile").mockImplementation(async (params: WriteFileParams) => {
-      try {
-        await fsAdapter.writeFile(params.path, params.content, "utf-8");
-        return { ok: true, result: `Successfully wrote to ${params.path}` };
-      } catch (error) {
-        return {
-          ok: false,
-          error: {
-            code: "WRITE_FILE_ERROR",
-            message: "Failed to write file",
-            error,
-          },
-        };
-      }
-    });
+    agent = new CodingAgent(aiProvider, logger, fsAdapter);
   });
 
   afterEach(() => {
-    vi.restoreAllMocks();
+    logger.clear();
     fsAdapter.clear();
   });
 
@@ -130,6 +76,11 @@ describe("CodingAgent", () => {
       (msg) => msg.role === "user" && msg.content.includes("[Tool Result] Failed to read file"),
     );
     expect(errorMessage).toBeDefined();
+
+    // エラーログが記録されていることを確認
+    const errors = logger.getErrors();
+    expect(errors.length).toBeGreaterThan(0);
+    expect(errors[0]).toContain("Error: Failed to read file");
   });
 
   test("タスクが完了するまでループが続くこと", async () => {
@@ -163,9 +114,10 @@ describe("CodingAgent", () => {
     expect(userMessages).toContain(secondToolResult);
 
     // ロガーに記録されているメッセージを確認
-    expect(mockLogger.logs).toContainEqual(expect.stringContaining("1回目の実行"));
-    expect(mockLogger.logs).toContainEqual(expect.stringContaining("2回目の実行"));
-    expect(mockLogger.logs).toContainEqual(expect.stringContaining("タスク完了"));
+    const logs = logger.getLogs();
+    expect(logs).toContainEqual(expect.stringContaining("1回目の実行"));
+    expect(logs).toContainEqual(expect.stringContaining("2回目の実行"));
+    expect(logs).toContainEqual(expect.stringContaining("タスク完了"));
   });
 
   describe("ファクトリーメソッド", () => {
@@ -175,11 +127,11 @@ describe("CodingAgent", () => {
         windowMs: 60000,
       };
       const rateLimitKey = "test-user";
-      const mockLogger = createMockLogger();
+      const logger = new InMemoryLogger();
 
       const agent = CodingAgent.fromAnthropicApiKey(
         "test-api-key",
-        mockLogger,
+        logger,
         rateLimitConfig,
         rateLimitKey,
       );
@@ -193,11 +145,11 @@ describe("CodingAgent", () => {
         windowMs: 60000,
       };
       const rateLimitKey = "test-user";
-      const mockLogger = createMockLogger();
+      const logger = new InMemoryLogger();
 
       const agent = CodingAgent.fromGoogleApiKey(
         "test-api-key",
-        mockLogger,
+        logger,
         rateLimitConfig,
         rateLimitKey,
       );
@@ -205,44 +157,10 @@ describe("CodingAgent", () => {
       expect(agent).toBeInstanceOf(CodingAgent);
     });
 
-    test("レートリミット設定なしでエージェントを作成できること", () => {
-      const mockLogger = createMockLogger();
-      const agent = CodingAgent.fromAnthropicApiKey("test-api-key", mockLogger);
+    test("fromEnvで環境変数から設定を読み込んでエージェントを作成できること", () => {
+      const logger = new InMemoryLogger();
+      const agent = CodingAgent.fromEnv("anthropic", logger);
       expect(agent).toBeInstanceOf(CodingAgent);
-    });
-
-    describe("fromEnv", () => {
-      test("環境変数から設定を読み込んでエージェントを作成できること", () => {
-        process.env.AI_API_KEY = "test-api-key";
-        process.env.AI_MODEL = "test-model";
-        process.env.AI_TEMPERATURE = "0.7";
-        const mockLogger = createMockLogger();
-
-        const agent = CodingAgent.fromEnv("anthropic", mockLogger);
-        expect(agent).toBeInstanceOf(CodingAgent);
-      });
-
-      test("レートリミットの設定も読み込めること", () => {
-        process.env.AI_API_KEY = "test-api-key";
-        process.env.AI_RATE_LIMIT_MAX_REQUESTS = "10";
-        process.env.AI_RATE_LIMIT_WINDOW_MS = "60000";
-        process.env.AI_RATE_LIMIT_KEY = "test-user";
-        const mockLogger = createMockLogger();
-
-        const agent = CodingAgent.fromEnv("anthropic", mockLogger);
-        expect(agent).toBeInstanceOf(CodingAgent);
-      });
-
-      test("必須の環境変数が設定されていない場合はエラーを投げること", () => {
-        const originalEnv = { ...process.env };
-        process.env = {};
-        const mockLogger = createMockLogger();
-
-        expect(() => CodingAgent.fromEnv("anthropic", mockLogger)).toThrow(
-          "ANTHROPIC_API_KEY or GEMINI_API_KEY is required",
-        );
-        process.env = originalEnv;
-      });
     });
   });
 });

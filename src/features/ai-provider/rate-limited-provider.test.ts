@@ -1,54 +1,123 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, test } from "vitest";
+import { InMemoryRateLimiter } from "../rate-limit/in-memory-rate-limiter";
 import type { RateLimitConfig } from "../rate-limit/types";
-import { createRateLimitedAIProvider } from "./rate-limited-provider";
-import type { AIProvider, Message } from "./types";
+import { InMemoryAIProvider } from "./in-memory-provider";
+import { RateLimitedAIProvider } from "./rate-limited-provider";
+import type { Message } from "./types";
 
 describe("RateLimitedAIProvider", () => {
+  let aiProvider: InMemoryAIProvider;
+  let rateLimiter: InMemoryRateLimiter;
+  let rateLimitedProvider: RateLimitedAIProvider;
+
   const mockMessages: Message[] = [
     { role: "user", content: "Hello" },
     { role: "assistant", content: "Hi there!" },
   ];
-
-  const mockProvider: AIProvider = {
-    generateResponse: vi.fn().mockResolvedValue("Mock response"),
-  };
 
   const rateLimitConfig: RateLimitConfig = {
     maxRequests: 2,
     windowMs: 1000,
   };
 
-  it("allows requests within rate limit", async () => {
-    const provider = createRateLimitedAIProvider(mockProvider, rateLimitConfig, "test-key");
-    const response = await provider.generateResponse(mockMessages);
-    expect(response).toBe("Mock response");
-    expect(mockProvider.generateResponse).toHaveBeenCalledWith(mockMessages);
+  beforeEach(() => {
+    aiProvider = new InMemoryAIProvider();
+    rateLimiter = new InMemoryRateLimiter(rateLimitConfig);
+    rateLimitedProvider = new RateLimitedAIProvider(
+      aiProvider,
+      rateLimitConfig,
+      "test-key",
+      // @ts-expect-error InMemoryRateLimiter は RateLimiter の一部のメソッドのみを実装
+      rateLimiter,
+    );
   });
 
-  it("throws error when rate limit is exceeded", async () => {
-    const provider = createRateLimitedAIProvider(mockProvider, rateLimitConfig, "test-key");
+  afterEach(() => {
+    rateLimiter.resetAll();
+  });
 
-    // First two requests should succeed
-    await provider.generateResponse(mockMessages);
-    await provider.generateResponse(mockMessages);
+  test("制限内のリクエストを許可すること", async () => {
+    // AIの応答を設定
+    aiProvider.setResponses(["Response 1"]);
 
-    // Third request should fail
-    await expect(provider.generateResponse(mockMessages)).rejects.toThrow(
+    const response = await rateLimitedProvider.generateResponse(mockMessages);
+    expect(response).toBe("Response 1");
+
+    // メッセージが正しく渡されていることを確認
+    const messages = aiProvider.getMessages();
+    expect(messages).toEqual(mockMessages);
+  });
+
+  test("制限を超えた場合にエラーを投げること", async () => {
+    // AIの応答を設定
+    aiProvider.setResponses(["Response 1", "Response 2", "Response 3"]);
+
+    // 最初の2つのリクエストは成功
+    await rateLimitedProvider.generateResponse(mockMessages);
+    await rateLimitedProvider.generateResponse(mockMessages);
+
+    // 3つ目のリクエストは失敗
+    await expect(rateLimitedProvider.generateResponse(mockMessages)).rejects.toThrow(
       /Rate limit exceeded/,
     );
   });
 
-  it("uses different rate limit keys for different instances", async () => {
-    const provider1 = createRateLimitedAIProvider(mockProvider, rateLimitConfig, "key1");
-    const provider2 = createRateLimitedAIProvider(mockProvider, rateLimitConfig, "key2");
+  test("時間経過後に制限がリセットされること", async () => {
+    // AIの応答を設定
+    aiProvider.setResponses(["Response 1", "Response 2", "Response 3"]);
 
-    // Both should be able to make requests up to their limit
+    // 制限まで使用
+    await rateLimitedProvider.generateResponse(mockMessages);
+    await rateLimitedProvider.generateResponse(mockMessages);
+
+    // 制限超過を確認
+    await expect(rateLimitedProvider.generateResponse(mockMessages)).rejects.toThrow(
+      /Rate limit exceeded/,
+    );
+
+    // 時間を進める
+    rateLimiter.advanceTime(1000);
+
+    // 制限がリセットされていることを確認
+    const response = await rateLimitedProvider.generateResponse(mockMessages);
+    expect(response).toBe("Response 3");
+  });
+
+  test("異なるキーで独立して制限が機能すること", async () => {
+    // 2つの異なるプロバイダーを作成
+    const provider1 = new RateLimitedAIProvider(
+      aiProvider,
+      rateLimitConfig,
+      "key1",
+      // @ts-expect-error InMemoryRateLimiter は RateLimiter の一部のメソッドのみを実装
+      rateLimiter,
+    );
+    const provider2 = new RateLimitedAIProvider(
+      aiProvider,
+      rateLimitConfig,
+      "key2",
+      // @ts-expect-error InMemoryRateLimiter は RateLimiter の一部のメソッドのみを実装
+      rateLimiter,
+    );
+
+    // AIの応答を設定
+    aiProvider.setResponses([
+      "Response 1",
+      "Response 2",
+      "Response 3",
+      "Response 4",
+      "Response 5",
+    ]);
+
+    // key1の制限を満たす
     await provider1.generateResponse(mockMessages);
     await provider1.generateResponse(mockMessages);
+
+    // key2も制限まで使用可能
     await provider2.generateResponse(mockMessages);
     await provider2.generateResponse(mockMessages);
 
-    // Both should fail after their limit
+    // 両方とも制限超過で失敗
     await expect(provider1.generateResponse(mockMessages)).rejects.toThrow(
       /Rate limit exceeded/,
     );

@@ -1,4 +1,5 @@
 import type { FSAdapter } from "../../lib/fsAdapter";
+import type { Logger } from "../../lib/logger";
 import { failure, success } from "../../lib/result";
 import * as tools from "./tools";
 import type {
@@ -10,12 +11,17 @@ import type {
   ToolType,
 } from "./types";
 
+interface Dependencies {
+  logger?: Logger;
+  fsAdapter?: FSAdapter;
+}
+
 /**
  * AIの応答からツール呼び出しを解析し、実行する
  */
 export async function parseAndExecuteTool(
   response: string,
-  fsAdapter?: FSAdapter,
+  deps: Partial<Dependencies> = {},
 ): Promise<ToolExecutionResult> {
   const parsedTool = parseTool(response);
 
@@ -26,7 +32,7 @@ export async function parseAndExecuteTool(
     };
   }
 
-  const toolResult = await executeTool(parsedTool.result, fsAdapter);
+  const toolResult = await executeTool(parsedTool.result, deps);
   return {
     toolResult,
     isComplete: parsedTool.result.type === "complete",
@@ -227,19 +233,23 @@ function parseParams(toolType: ToolType, content: string | undefined): Result<To
 /**
  * ツールを実行する
  */
-async function executeTool(tool: Tool, fsAdapter?: FSAdapter): Promise<ToolResult> {
-  const deps = fsAdapter ? { fsAdapter } : {};
+async function executeTool(tool: Tool, deps: Partial<Dependencies>): Promise<ToolResult> {
+  const { fsAdapter, logger } = deps;
+  const depsForTool = {
+    ...(fsAdapter ? { fsAdapter } : {}),
+    ...(logger ? { logger } : {}),
+  };
   switch (tool.type) {
     case "list_file":
-      return tools.listFile(tool.params, deps);
+      return tools.listFile(tool.params, depsForTool);
     case "read_file":
-      return tools.readFile(tool.params, deps);
+      return tools.readFile(tool.params, depsForTool);
     case "write_file":
-      return tools.writeFile(tool.params, deps);
+      return tools.writeFile(tool.params, depsForTool);
     case "ask_question":
-      return tools.askQuestion(tool.params, deps);
+      return tools.askQuestion(tool.params, depsForTool);
     case "execute_command":
-      return tools.executeCommand(tool.params, deps);
+      return tools.executeCommand(tool.params, depsForTool);
     case "complete":
       return tools.complete(tool.params);
   }

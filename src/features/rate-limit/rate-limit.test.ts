@@ -1,67 +1,103 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { initRateLimiter, withRateLimit } from "./middleware";
+import { afterEach, beforeEach, describe, expect, test } from "vitest";
+import { InMemoryRateLimiter } from "./in-memory-rate-limiter";
+import type { RateLimitConfig } from "./types";
 
-describe("withRateLimit", () => {
-  let currentTime = 0;
+describe("RateLimiter", () => {
+  let rateLimiter: InMemoryRateLimiter;
+  const config: RateLimitConfig = {
+    maxRequests: 15,
+    windowMs: 1000,
+  };
 
   beforeEach(() => {
-    currentTime = 0;
-    initRateLimiter(() => currentTime);
+    rateLimiter = new InMemoryRateLimiter(config);
   });
 
   afterEach(() => {
-    vi.useRealTimers();
+    rateLimiter.resetAll();
   });
 
-  it("should allow requests within limit", async () => {
-    const middleware = withRateLimit("test");
-    const next = vi.fn().mockResolvedValue("success");
-
-    const result = await middleware(next);
-    expect(result).toBe("success");
-    expect(next).toHaveBeenCalledTimes(1);
+  test("制限内のリクエストを許可すること", async () => {
+    const result = await rateLimiter.check("test");
+    expect(result.success).toBe(true);
+    expect(result.info).toEqual({
+      remaining: 14,
+      reset: expect.any(Number),
+      limit: 15,
+    });
   });
 
-  it("should throw error when rate limit is exceeded", async () => {
-    const middleware = withRateLimit("test");
-    const next = vi.fn().mockResolvedValue("success");
-
+  test("制限を超えた場合にエラーを返すこと", async () => {
     // 制限内のリクエスト
     for (let i = 0; i < 15; i++) {
-      await middleware(next);
-      currentTime += 100; // 各リクエストの間に100ms進める
+      const result = await rateLimiter.check("test");
+      expect(result.success).toBe(true);
+      expect(result.info.remaining).toBe(14 - i);
     }
 
     // 制限超過のリクエスト
-    try {
-      await middleware(next);
-      throw new Error("Expected middleware to throw an error");
-    } catch (error) {
-      expect(error).toMatchObject({
-        type: "rate_limit",
-        message: "Rate limit exceeded",
-        info: {
-          remaining: 0,
-          limit: 15,
-          reset: expect.any(Number),
-        },
-      });
-    }
+    const result = await rateLimiter.check("test");
+    expect(result.success).toBe(false);
+    expect(result.info).toEqual({
+      remaining: 0,
+      reset: expect.any(Number),
+      limit: 15,
+    });
   });
 
-  it("should handle multiple keys independently", async () => {
-    const middleware1 = withRateLimit("key1");
-    const middleware2 = withRateLimit("key2");
-    const next = vi.fn().mockResolvedValue("success");
-
-    // key1の制限を満たす
+  test("時間経過後に制限がリセットされること", async () => {
+    // 制限内のリクエスト
     for (let i = 0; i < 15; i++) {
-      await middleware1(next);
-      currentTime += 100; // 各リクエストの間に100ms進める
+      await rateLimiter.check("test");
     }
 
+    // 制限超過のリクエスト
+    let result = await rateLimiter.check("test");
+    expect(result.success).toBe(false);
+
+    // 時間を進める
+    rateLimiter.advanceTime(1000);
+
+    // 制限がリセットされていることを確認
+    result = await rateLimiter.check("test");
+    expect(result.success).toBe(true);
+    expect(result.info.remaining).toBe(14);
+  });
+
+  test("異なるキーで独立して制限が機能すること", async () => {
+    // key1の制限を満たす
+    for (let i = 0; i < 15; i++) {
+      await rateLimiter.check("key1");
+    }
+
+    // key1は制限超過
+    let result = await rateLimiter.check("key1");
+    expect(result.success).toBe(false);
+
     // key2はまだ制限に達していない
-    const result = await middleware2(next);
-    expect(result).toBe("success");
+    result = await rateLimiter.check("key2");
+    expect(result.success).toBe(true);
+    expect(result.info.remaining).toBe(14);
+  });
+
+  test("古いリクエストが期限切れになること", async () => {
+    // 最初のリクエスト
+    await rateLimiter.check("test");
+
+    // 時間を少し進める
+    rateLimiter.advanceTime(100);
+
+    // 残りのリクエスト
+    for (let i = 0; i < 13; i++) {
+      await rateLimiter.check("test");
+    }
+
+    // 最初のリクエストの期限が切れるまで時間を進める
+    rateLimiter.advanceTime(901); // 合計1001ms経過
+
+    // 新しいリクエストが可能になっていることを確認
+    const result = await rateLimiter.check("test");
+    expect(result.success).toBe(true);
+    expect(result.info.remaining).toBe(14);
   });
 });
