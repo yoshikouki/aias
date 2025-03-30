@@ -30,11 +30,15 @@ async function main() {
     logger,
   });
 
+  // Add adapter to agent
+  agent.addAdapter(discordAdapter);
+
   try {
-    await discordAdapter.start();
-    logger.log("Discord bot is running...");
+    // Start the agent with all adapters
+    await agent.start();
+    logger.log("AIAS agent is running with all adapters...");
   } catch (error) {
-    logger.error("Error:", error);
+    logger.error("Error starting agent:", error);
     process.exit(1);
   }
 }
