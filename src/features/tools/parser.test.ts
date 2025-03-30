@@ -39,7 +39,7 @@ describe("parseAndExecuteTool", () => {
         <path>test</path>
         <recursive>true</recursive>
       </list_file>`,
-      fsAdapter,
+      { fsAdapter },
     );
     expect(result.toolResult.ok).toBe(true);
     if (result.toolResult.ok) {

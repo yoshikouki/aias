@@ -30,12 +30,13 @@ export class InMemoryFSAdapter implements FSAdapter {
       return allPaths.filter((name) => name !== "");
     }
 
-    // 直下のファイルとディレクトリを抽出
     const result = new Set<string>();
     for (const name of allPaths) {
       if (name === "") continue;
       const parts = name.split("/");
-      result.add(parts[0]);
+      const firstPart = parts[0];
+      if (!firstPart) continue;
+      result.add(firstPart);
     }
 
     return Array.from(result);
