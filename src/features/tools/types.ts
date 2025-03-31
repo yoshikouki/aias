@@ -7,13 +7,7 @@ export type ToolError = {
   code?: string;
 };
 
-type ToolSuccess<T = string> = T;
 export type ToolResult<T = string> = Result<T, ToolError>;
-
-interface ToolResponse {
-  success: boolean;
-  message: string;
-}
 
 export interface ListFileParams {
   path: string;

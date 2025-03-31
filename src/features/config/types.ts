@@ -1,12 +1,3 @@
-interface Config {
-  gemini: {
-    apiKey: string;
-  };
-  discord: {
-    token: string;
-  };
-}
-
 export interface EnvAdapter {
   get: (key: string) => string | undefined;
 }

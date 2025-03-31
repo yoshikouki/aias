@@ -1,6 +1,5 @@
 type Success<T> = { ok: true; result: T };
 type Failure<E> = { ok: false; error: E };
-type Result<T, E> = Success<T> | Failure<E>;
 
 /**
  * 成功結果を生成するヘルパー関数

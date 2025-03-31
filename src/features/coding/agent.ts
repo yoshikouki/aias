@@ -55,11 +55,6 @@ interface Message {
   channelId?: string;
 }
 
-interface Response {
-  content: string;
-  type: "text" | "code" | "error";
-}
-
 /**
  * コーディングエージェントを実装
  */

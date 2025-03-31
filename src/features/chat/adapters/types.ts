@@ -1,4 +1,3 @@
-import type { Logger } from "../../../lib/logger";
 import type { Message, Response } from "../../agent/types";
 
 /**
@@ -9,16 +8,3 @@ export interface ChatAdapter {
   stop(): Promise<void>;
   setMessageHandler(handler: (message: Message) => Promise<Response>): void;
 }
-
-/**
- * チャットアダプターの設定
- */
-interface ChatAdapterConfig {
-  // 共通の設定を定義
-  logger: Logger;
-}
-
-/**
- * チャットアダプターのファクトリ関数の型
- */
-type CreateChatAdapter = (config: ChatAdapterConfig) => ChatAdapter;
