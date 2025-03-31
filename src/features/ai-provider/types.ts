@@ -8,7 +8,7 @@ export interface AIProvider {
 /**
  * メッセージの型定義
  */
-export type Role = "user" | "assistant";
+type Role = "user" | "assistant";
 export interface Message {
   role: Role;
   content: string;

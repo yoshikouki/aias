@@ -4,7 +4,7 @@ import type { ChatSkill } from "../chat/skill";
 import type { CodingSkill } from "../coding/types";
 import type { Message, Response } from "./types";
 
-export interface AiasAgentConfig {
+interface AiasAgentConfig {
   codingSkill: CodingSkill;
   chatSkill: ChatSkill;
   logger: Logger;

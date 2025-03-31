@@ -1,4 +1,4 @@
-export interface Config {
+interface Config {
   gemini: {
     apiKey: string;
   };

@@ -42,7 +42,7 @@ export async function parseAndExecuteTool(
 /**
  * AIの応答からツール呼び出しを解析する
  */
-export function parseTool(response: string): Result<Tool, ToolError> {
+function parseTool(response: string): Result<Tool, ToolError> {
   const toolMatch = response.match(/<([a-z_]+)>([\s\S]*?)<\/\1>/);
   if (!toolMatch) {
     return failure({

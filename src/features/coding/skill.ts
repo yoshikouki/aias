@@ -3,7 +3,7 @@ import type { Message, Response } from "../agent/types";
 import { createGenerativeAIAdapter } from "./adapters/generative-ai";
 import type { CodingSkill, GenerativeAIAdapter } from "./types";
 
-export interface ChatSkillConfig {
+interface ChatSkillConfig {
   apiKey: string;
   logger: Logger;
   aiAdapter?: GenerativeAIAdapter;

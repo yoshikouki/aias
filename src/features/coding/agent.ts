@@ -48,14 +48,14 @@ Indicate task completion.
 
 Always use one of the above tools. Do not respond directly without using a tool.`;
 
-export interface Message {
+interface Message {
   content: string;
   role: "user" | "assistant";
   userId?: string;
   channelId?: string;
 }
 
-export interface Response {
+interface Response {
   content: string;
   type: "text" | "code" | "error";
 }

@@ -1,6 +1,6 @@
-export type Success<T> = { ok: true; result: T };
-export type Failure<E> = { ok: false; error: E };
-export type Result<T, E> = Success<T> | Failure<E>;
+type Success<T> = { ok: true; result: T };
+type Failure<E> = { ok: false; error: E };
+type Result<T, E> = Success<T> | Failure<E>;
 
 /**
  * 成功結果を生成するヘルパー関数
@@ -11,7 +11,7 @@ export function success<T>(result: T): Success<T> {
   return { ok: true, result };
 }
 
-export type FailureParams<E extends { message: string }> = E | (E & { error?: unknown });
+type FailureParams<E extends { message: string }> = E | (E & { error?: unknown });
 
 /**
  * 失敗結果を生成するヘルパー関数

@@ -1,5 +1,5 @@
-export type Success<T> = { ok: true; result: T };
-export type Failure<E> = { ok: false; error: E };
+type Success<T> = { ok: true; result: T };
+type Failure<E> = { ok: false; error: E };
 export type Result<T, E> = Success<T> | Failure<E>;
 
 export type ToolError = {
@@ -7,10 +7,10 @@ export type ToolError = {
   code?: string;
 };
 
-export type ToolSuccess<T = string> = T;
+type ToolSuccess<T = string> = T;
 export type ToolResult<T = string> = Result<T, ToolError>;
 
-export interface ToolResponse {
+interface ToolResponse {
   success: boolean;
   message: string;
 }

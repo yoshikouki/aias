@@ -13,7 +13,7 @@ export interface ChatAdapter {
 /**
  * チャットアダプターの設定
  */
-export interface ChatAdapterConfig {
+interface ChatAdapterConfig {
   // 共通の設定を定義
   logger: Logger;
 }
@@ -21,4 +21,4 @@ export interface ChatAdapterConfig {
 /**
  * チャットアダプターのファクトリ関数の型
  */
-export type CreateChatAdapter = (config: ChatAdapterConfig) => ChatAdapter;
+type CreateChatAdapter = (config: ChatAdapterConfig) => ChatAdapter;

@@ -20,6 +20,3 @@ export const envConfigSchema = z
     anthropicApiKey: env.ANTHROPIC_API_KEY,
     geminiApiKey: env.GEMINI_API_KEY,
   }));
-
-export type AIProviderConfig = z.infer<typeof aiProviderConfigSchema>;
-export type EnvConfig = z.infer<typeof envConfigSchema>;

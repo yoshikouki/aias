@@ -10,7 +10,7 @@ export interface Logger {
 /**
  * デフォルトのコンソールロガー実装
  */
-export const createConsoleLogger = (): Logger => ({
+const createConsoleLogger = (): Logger => ({
   log(message: string): void {
     console.log(message);
   },
@@ -33,7 +33,7 @@ export const createConsoleLogger = (): Logger => ({
 /**
  * テスト用のサイレントロガー実装
  */
-export const createSilentLogger = (): Logger => ({
+const createSilentLogger = (): Logger => ({
   log(_message: string): void {
     // ログ出力しない
   },
@@ -48,7 +48,7 @@ export const createSilentLogger = (): Logger => ({
 /**
  * テスト用のインメモリロガー実装
  */
-export const createInMemoryLogger = (): Logger & {
+const createInMemoryLogger = (): Logger & {
   messages: string[];
   errors: Array<{ message: string; error?: unknown }>;
   warnings: Array<{ message: string; warning?: unknown }>;

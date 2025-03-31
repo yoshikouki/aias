@@ -3,7 +3,7 @@ import type { Logger } from "../../../lib/logger";
 import type { Message as AiasMessage, Response } from "../../agent/types";
 import type { ChatAdapter } from "./types";
 
-export interface DiscordAdapterConfig {
+interface DiscordAdapterConfig {
   token: string;
   logger: Logger;
 }
