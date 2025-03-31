@@ -11,7 +11,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:build": "tsc --noEmit",
-    "update:all": "bun update --latest"
+    "update:all": "bun update --latest",
+    "knip": "knip"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^1.2.1",
@@ -22,6 +23,7 @@
   "devDependencies": {
     "@biomejs/biome": "1.9.4",
     "@types/bun": "latest",
+    "knip": "^5.46.4",
     "vitest": "^3.0.9"
   },
   "peerDependencies": {
