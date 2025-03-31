@@ -12,7 +12,8 @@
     "test:watch": "vitest",
     "test:build": "tsc --noEmit",
     "update:all": "bun update --latest",
-    "knip": "knip"
+    "knip": "knip",
+    "knip:fix": "bun run knip --fix --fix-type dependencies,exports,types --allow-remove-files --include-libs"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^1.2.1",
