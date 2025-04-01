@@ -3,11 +3,6 @@
 	url = https://github.com/oven-sh/bun.git
 	shallow = true
 	sparse = true
-[submodule "ref/mastra"]
-	path = ref/mastra
-	url = https://github.com/mastra-ai/mastra.git
-	shallow = true
-	sparse = true
 [submodule "ref/ai"]
 	path = ref/ai
 	url = https://github.com/vercel/ai.git
