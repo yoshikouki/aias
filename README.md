@@ -1,90 +1,147 @@
-# aias
+# AIAS
 
-AIAS (AI Assistant System) は、AIエージェントとDiscordを組み合わせたコーディングアシスタントシステムです。
+AIAS は一貫した人格を持つAIアシスタントとして実装されています。Mastra AI のメモリシステムを活用し、すべてのユーザーとの対話を単一の記憶として保持することで、継続的に学習・成長する対話型AIを実現しています。
 
 ## アーキテクチャ
 
-このプロジェクトは以下の主要なコンポーネントで構成されています：
+AIAS は SOLID 原則に基づいて設計された、スキルベースのアーキテクチャを採用しています。
 
-1. **AiasAgent**
-   - メインのエージェントクラス
-   - スキル（コーディング、チャット）のコーディネーション
-   - メッセージの処理とスキルの選択
-   - 状態管理
-   - コミュニケーションアダプターの管理
+### コアコンセプト
 
-2. **CodingSkill**
-   - コーディングスキル
-   - コード生成、修正、テストなどの機能
-   - Gemini APIとの連携
+#### エージェント (Agent)
+エージェントは複数のスキルを組み合わせて動作する中心的な存在です。
+- スキルのオーケストレーション
+- コンテキストの管理
+- 一貫した人格の維持
 
-3. **ChatSkill**
-   - チャットスキル
-   - 自然な会話の生成
-   - コンテキストの管理
+```typescript
+interface Agent {
+  readonly id: string;
+  readonly skills: ReadonlyMap<string, Skill<any, any>>;
+  useSkill<T extends Skill<any, any>>(
+    skillType: string,
+    context: Parameters<T["use"]>[0]
+  ): Promise<ReturnType<T["use"]>>;
+}
+```
 
-4. **コミュニケーションアダプター**
-   - さまざまなプラットフォームとの連携を抽象化
-   - 現在はDiscordAdapterを実装
-   - 将来的にSlack、GitHub、標準入出力など他のプラットフォームにも対応予定
+#### スキル (Skill)
+スキルは特定の能力を表現する単位です。
+- 単一責任の原則に基づく設計
+- 独立した機能単位
+- 組み合わせ可能な設計
 
-## 設計思想
+```typescript
+interface Skill<Context, Result> {
+  readonly type: string;
+  use(context: Context): Promise<Result>;
+}
 
-### 関数型アプローチ (FP)
+// 例: チャットスキル
+interface ChatSkill extends Skill<ChatContext, ChatResult> {
+  type: "chat";
+  // チャット特有の機能
+}
 
-- 純粋関数を優先
-- 不変データ構造を使用
-- 副作用を分離
-- 型安全性を確保
+// 例: メモリスキル
+interface MemorySkill extends Skill<MemoryContext, MemoryResult> {
+  type: "memory";
+  // メモリ特有の機能
+}
+```
 
-### 依存性の注入 (DI)
+#### ツール (Tool)
+ツールはスキルを実行するための具体的な手段を提供します。
+- 外部システムとの統合
+- プラットフォーム特有の実装
+- スキルとの疎結合
 
-- 外部依存（API、ロガーなど）を適切に注入
-- テスト時のモック化が容易
-- コンポーネント間の結合度を低減
+```typescript
+interface Tool<S extends Skill<any, any>> {
+  readonly type: string;
+  execute(skill: S, context: Parameters<S["use"]>[0]): Promise<void>;
+}
 
-### アダプターパターン
+// 例: Discordツール
+interface DiscordTool extends Tool<ChatSkill> {
+  type: "discord";
+  // Discord特有の実装
+}
+```
 
-- 外部サービス（Discord、Slack等）との連携を抽象化
-- インターフェイスは呼び出し側で定義
-- テスト時は容易に差し替え可能
-- スキル（能力）とコミュニケーション方法の明確な分離
+### 設計原則
 
-### 拡張性を考慮した設計
+#### 1. Single Responsibility Principle
+各コンポーネントは単一の責務を持ちます：
+- Skill: 特定の能力の実装
+- Tool: 特定のプラットフォームとの統合
+- Agent: スキルの調整と管理
 
-- 現在はAiasAgentがコミュニケーションアダプターを管理
-- 将来的には専用のコミュニケーションレイヤーに責任を移行できるよう設計
-- 複数のプラットフォーム間でのコンテキスト維持を想定
-- 新しいスキルや機能の追加が容易
+#### 2. Open-Closed Principle
+拡張に対して開かれ、修正に対して閉じられています：
+- 新しいスキルの追加が容易
+- 新しいツールの追加が容易
+- 既存コードの変更なしで機能拡張が可能
 
-## セットアップ
+#### 3. Liskov Substitution Principle
+基本型は安全に置き換え可能：
+- スキルの基本契約の遵守
+- ツールの一貫した動作
+- 型安全性の確保
 
-依存関係のインストール:
+#### 4. Interface Segregation Principle
+インターフェースは必要最小限に保たれています：
+- 役割に応じた分割
+- クライアント特化のインターフェース
+- 不要な依存の排除
+
+#### 5. Dependency Inversion Principle
+高レベルモジュールは低レベルモジュールに依存しません：
+- 抽象への依存
+- プラグイン機構
+- テスト容易性
+
+## 実装例
+
+```typescript
+// エージェントの使用例
+const agent = new Agent({
+  id: "aias",
+  skills: new Map([
+    ["chat", new ChatSkill()],
+    ["memory", new MemorySkill()]
+  ])
+});
+
+// スキルの使用
+const result = await agent.useSkill<ChatSkill>("chat", {
+  message: "こんにちは",
+  context: { /* ... */ }
+});
+
+// ツールによるスキルの実行
+const discordTool = new DiscordTool(client, logger);
+await discordTool.execute(chatSkill, chatContext);
+```
+
+## 開発環境
 
 ```bash
+# 依存関係のインストール
 bun install
+
+# 静的型チェック
+bun run format
+bun run test:build
+bun run knip:fix
+
+# テストの実行
+bun run test
+
+# ビルド
+bun run build
 ```
-
-## 実行
-
-```bash
-bun run index.ts
-```
-
-## 環境変数
-
-以下の環境変数を設定する必要があります：
-
-- `GEMINI_API_KEY`: Google AI APIキー
-- `DISCORD_TOKEN`: Discordボットトークン
-
-## 技術スタック
-
-- [Bun](https://bun.sh) - 高速なJavaScriptランタイム
-- [Discord.js](https://discord.js.org/) - Discord APIクライアント
-- [Google AI](https://ai.google.dev/) - AI機能の提供
-- TypeScript - 型安全なコードベース
 
 ## ライセンス
 
-MIT
+[MIT License](LICENSE)
