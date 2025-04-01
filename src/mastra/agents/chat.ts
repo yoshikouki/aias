@@ -91,7 +91,7 @@ export const chatAgent = new Agent({
   memory,
 });
 
-// メモリへのアクセスを提供する関数
-export function getMemory(): Memory {
+// テスト用のメモリインスタンスを提供する関数
+export function getMemoryForTesting(): Memory {
   return memory;
 }

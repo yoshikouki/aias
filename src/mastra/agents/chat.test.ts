@@ -14,7 +14,7 @@ beforeAll(() => {
 beforeEach(async () => {
   try {
     memory = getMemoryForTesting();
-  } catch (error) {
+  } catch (_error) {
     throw new Error("Failed to initialize memory for testing");
   }
 

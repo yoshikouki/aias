@@ -33,7 +33,7 @@ const mastraLogger = createLogger({
   level: "debug", // より詳細なログを出力
 });
 
-export const mastra = new Mastra({
+const mastra = new Mastra({
   agents: { chatAgent },
   logger: mastraLogger,
 });
