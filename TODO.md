@@ -1,74 +1,113 @@
 # リファクタリング計画
 
-[Previous content...]
+## 目的
+- コードの整理と保守性の向上
+- 責任の明確な分離
+- テスト容易性の向上
+- 型安全性の確保
+- ドメインモデルの明確化
 
-### Phase 0: ドメインモデルの再設計 [New]
+## 計画
+
+### Phase 0: ドメインモデルの再設計 [進行中]
 #### SOLID原則に基づく設計
-- [ ] Single Responsibility Principle
-  - [ ] 各クラス/インターフェースの責務の明確化
-  - [ ] 責務の分離とモジュール化
-  - [ ] コンテキストの適切な境界設定
+- [x] 基本インターフェースの設計
+  - [x] `Skill` インターフェース
+  - [x] `Tool` インターフェース
+  - [x] `Agent` インターフェース
 
-- [ ] Open-Closed Principle
-  - [ ] 拡張ポイントの特定と抽象化
-  - [ ] プラグイン機構の設計
-  - [ ] 設定による機能拡張の仕組み
+#### スキルの実装
+- [x] 基本的な型定義
+  - [x] `SkillContext`
+  - [x] `SkillResult`
+  - [x] `SkillConfig`
+- [x] チャットスキル
+  - [x] `ChatSkill` インターフェース
+  - [x] `ChatContext` と `ChatResult`
+  - [x] 基本実装
+  - [x] Gemini 2.0 Flash への移行
+  - [ ] テスト
+- [ ] メモリスキル
+  - [ ] `MemorySkill` インターフェース
+  - [ ] `MemoryContext` と `MemoryResult`
+  - [ ] 基本実装
+  - [ ] テスト
 
-- [ ] Liskov Substitution Principle
-  - [ ] 基本契約の定義
-  - [ ] 型階層の設計
-  - [ ] 事前条件/事後条件の明確化
+#### ツールの実装
+- [x] 基本的な型定義
+  - [x] `Tool` インターフェース
+  - [x] `ToolConfig`
+  - [x] `ToolResult`
+- [ ] Discordツール
+  - [ ] `DiscordTool` インターフェース
+  - [ ] 基本実装
+  - [ ] テスト
 
-- [ ] Interface Segregation Principle
-  - [ ] インターフェースの最小化
-  - [ ] 役割に応じた分割
-  - [ ] クライアント特化のインターフェース
+#### エージェントの実装
+- [x] 基本的な型定義
+  - [x] `Agent` インターフェース
+  - [x] `AgentConfig`
+- [ ] 基本実装
+  - [ ] スキル管理
+  - [ ] コンテキスト管理
+  - [ ] テスト
 
-- [ ] Dependency Inversion Principle
-  - [ ] 抽象への依存
-  - [ ] DIコンテナの検討
-  - [ ] テスト容易性の確保
+### Phase 1: DiscordBot のクラスベース実装
+[previous Phase 1 content...]
 
-#### 基本インターフェース
-```typescript
-// 基本的なスキルインターフェース
-interface Skill<Context, Result> {
-  readonly type: string;
-  use(context: Context): Promise<Result>;
-}
+### Phase 2: メモリ管理の抽象化
+[previous Phase 2 content...]
 
-// スキルファクトリー
-interface SkillFactory {
-  create<T extends Skill<any, any>>(config: SkillConfig): Promise<T>;
-}
+### Phase 3: エージェント管理の改善
+[previous Phase 3 content...]
 
-// ツールインターフェース
-interface Tool<S extends Skill<any, any>> {
-  readonly type: string;
-  execute(skill: S, context: Parameters<S["use"]>[0]): Promise<void>;
-}
+### Phase 4: 設定管理の整理
+[previous Phase 4 content...]
 
-// エージェント
-interface Agent {
-  readonly id: string;
-  readonly skills: ReadonlyMap<string, Skill<any, any>>;
-  useSkill<T extends Skill<any, any>>(
-    skillType: string,
-    context: Parameters<T["use"]>[0]
-  ): Promise<ReturnType<T["use"]>>;
-}
+## ディレクトリ構造（現在）
 ```
-
-[Rest of previous content...]
+src/
+├── features/
+│   ├── agent/         # エージェント関連
+│   │   └── types.ts
+│   ├── skills/        # スキル実装
+│   │   ├── types.ts
+│   │   └── chat/
+│   │       ├── types.ts
+│   │       └── ChatSkill.ts
+│   └── tools/         # ツール実装
+│       └── types.ts
+├── lib/               # 共通ユーティリティ
+└── mastra/            # Mastra関連の実装
+```
 
 ## 進捗
 
+### 完了した作業
+- ドメインモデルの基本設計
+- 基本インターフェースの実装
+- チャットスキルの基本実装
+- チャットスキルの Gemini 2.0 Flash への移行
+  - `@ai-sdk/google` を使用した実装
+  - モデルの設定とエージェントの指示を更新
+  - 高速で効率的な応答が可能に
+
 ### 現在の作業
-- SOLIDに基づくドメインモデルの設計
-- 基本インターフェースの定義
+- Phase 0の実装
+  - チャットスキルのテスト
+  - メモリスキルの実装
+  - Discordツールの実装
 
 ### 次のステップ
-1. 基本インターフェースの実装
-2. スキルの実装（Chat, Memory）
-3. ツールの実装（Discord）
-4. テストの作成
+1. メモリスキルの実装
+   - インターフェース設計
+   - 基本実装
+   - テスト
+2. Discordツールの実装
+   - インターフェース設計
+   - 基本実装
+   - テスト
+3. エージェントの実装
+   - スキル管理機能
+   - コンテキスト管理
+   - テスト

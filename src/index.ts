@@ -1,29 +1,66 @@
-import { loadConfig } from "./features/config";
-import { logger } from "./lib/logger";
-import { createDiscordBot } from "./mastra";
+import { createLogger } from "./features/common/logger";
+import { createChatSkill } from "./features/skills/chat/ChatSkill";
+import { createMemorySkill } from "./features/skills/memory/MemorySkill";
+import { createDiscordTool } from "./features/tools/discord";
+
+// Export core types and utility functions
+export * from "./features/common/logger";
+export * from "./features/skills/chat/types";
+export * from "./features/skills/memory/types";
+export * from "./features/tools/discord/types";
 
 async function main() {
-  const configResult = loadConfig();
-  if (!configResult.ok) {
-    logger.error(configResult.error.message);
-    process.exit(1);
-  }
-  const config = configResult.result;
-
-  // Create Discord bot with Mastra integration
-  const discordBot = createDiscordBot({
-    token: config.discord.token,
+  const logger = createLogger();
+  const discordTool = createDiscordTool({
+    type: "discord",
+    token: process.env.DISCORD_TOKEN || "",
     logger,
   });
 
-  try {
-    // Start the Discord bot
-    await discordBot.start();
-    logger.log("AIAS agent is running with Discord integration...");
-  } catch (error) {
-    logger.error("Error starting agent:", error);
-    process.exit(1);
+  const memorySkill = createMemorySkill({
+    type: "memory",
+    lastMessages: 100,
+    semanticRecall: {
+      topK: 5,
+      messageRange: {
+        before: 3,
+        after: 2,
+      },
+    },
+  });
+
+  const chatSkill = createChatSkill(
+    {
+      type: "chat",
+      model: "gemini-2.0-flash",
+      temperature: 0.7,
+      maxTokens: 2048,
+    },
+    memorySkill,
+  );
+
+  await discordTool.start();
+  logger.log("Discord tool started");
+
+  const message = "Hello, how can I help you today?";
+  const result = await chatSkill.use({
+    message,
+    role: "assistant",
+    timestamp: Date.now(),
+    metadata: {
+      threadId: "test-thread",
+      userId: "test-resource",
+    },
+  });
+
+  if (result.success) {
+    logger.log(`Chat response: ${result.response}`);
+  } else {
+    logger.error(`Chat error: ${result.error}`);
   }
 }
 
-main();
+main().catch((error) => {
+  console.error("Error:", error);
+  process.exit(1);
+});
