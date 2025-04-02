@@ -28,10 +28,18 @@
   - [x] Gemini 2.0 Flash への移行
   - [ ] テスト
 - [ ] メモリスキル
-  - [ ] `MemorySkill` インターフェース
-  - [ ] `MemoryContext` と `MemoryResult`
+  - [x] `MemorySkill` インターフェイス
+  - [x] `MemoryContext` と `MemoryResult`
   - [ ] 基本実装
-  - [ ] テスト
+  - [ ] テスト（TDD + アダプターパターン）
+    - [x] `MemoryAdapter` インターフェイス定義（必要最低限のメソッド）
+    - [x] `DefaultMemorySkill` が `MemoryAdapter` に依存するように修正
+    - [x] テストケース作成（`getThreadById` から開始）
+    - [x] `getThreadById` の実装完了
+    - [x] `addMessage` の実装完了
+    - [ ] 型安全性の向上（`any` の排除）
+    - [ ] ビルドエラーの解決
+    - [ ] Red -> Green -> Refactor サイクルで残りのメソッドを実装
 
 #### ツールの実装
 - [x] 基本的な型定義
@@ -96,13 +104,15 @@ src/
 - Phase 0の実装
   - チャットスキルのテスト
   - メモリスキルの実装
+    - `getThreadById` と `addMessage` の実装完了
+    - 型安全性の向上とビルドエラーの解決中
   - Discordツールの実装
 
 ### 次のステップ
 1. メモリスキルの実装
    - インターフェース設計
    - 基本実装
-   - テスト
+   - テスト (TDD + アダプターパターンで実施)
 2. Discordツールの実装
    - インターフェース設計
    - 基本実装

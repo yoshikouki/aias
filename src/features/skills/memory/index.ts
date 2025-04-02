@@ -1,25 +1,20 @@
-import type { Memory } from "@mastra/memory";
-import type { MemoryContext, MemoryData, MemoryResult, MemorySkill, Message } from "./types";
+import type {
+  MemoryAdapter,
+  MemoryContext,
+  MemoryData,
+  MemoryResult,
+  MemorySkill,
+  Message,
+  StorageMessage,
+} from "./types";
 
 interface MemorySkillConfig {
-  memory: Memory;
-}
-
-interface StorageMessage {
-  role: string;
-  content: unknown;
-}
-
-interface StorageThread {
-  id: string;
-  resourceId: string;
-  title?: string;
-  messages: StorageMessage[];
+  memory: MemoryAdapter;
 }
 
 export class DefaultMemorySkill implements MemorySkill {
   readonly type = "memory";
-  private memory: Memory;
+  private memory: MemoryAdapter;
 
   constructor(config: MemorySkillConfig) {
     this.memory = config.memory;
@@ -62,7 +57,7 @@ export class DefaultMemorySkill implements MemorySkill {
             );
           })
           .map((msg: StorageMessage) => ({
-            role: msg.role as "user" | "assistant",
+            role: msg.role === "tool" ? "system" : (msg.role as Message["role"]),
             content: msg.content as string,
             timestamp: new Date(),
           }));
@@ -90,34 +85,30 @@ export class DefaultMemorySkill implements MemorySkill {
   }
 
   async getThreadById({ threadId }: { threadId: string }): Promise<MemoryData | null> {
-    try {
-      const thread = (await this.memory.getThreadById({ threadId })) as StorageThread | null;
-      if (!thread) return null;
+    const thread = await this.memory.getThreadById({ threadId });
+    if (!thread) return null;
 
-      const messages = thread.messages
-        ? thread.messages
-            .filter((msg: StorageMessage) => {
-              return (
-                (msg.role === "user" || msg.role === "assistant") &&
-                typeof msg.content === "string"
-              );
-            })
-            .map((msg: StorageMessage) => ({
-              role: msg.role as "user" | "assistant",
-              content: msg.content as string,
-              timestamp: new Date(),
-            }))
-        : [];
+    const messages = thread.messages
+      ? thread.messages
+          .filter((msg: StorageMessage) => {
+            return (
+              (msg.role === "user" || msg.role === "assistant") &&
+              typeof msg.content === "string"
+            );
+          })
+          .map((msg: StorageMessage) => ({
+            role: msg.role === "tool" ? "system" : (msg.role as Message["role"]),
+            content: msg.content as string,
+            timestamp: new Date(),
+          }))
+      : [];
 
-      return {
-        threadId: thread.id,
-        resourceId: thread.resourceId,
-        title: thread.title,
-        messages,
-      };
-    } catch (error) {
-      return null;
-    }
+    return {
+      threadId: thread.id,
+      resourceId: thread.resourceId,
+      title: thread.title,
+      messages,
+    };
   }
 
   async createThread({

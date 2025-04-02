@@ -24,6 +24,9 @@ export function loadConfig(envAdapter: EnvAdapter = defaultEnvAdapter): ConfigRe
   const validatedEnv = result.data;
 
   return success({
+    models: {
+      chat: "gemini-2.0-flash",
+    },
     gemini: {
       apiKey: validatedEnv.GEMINI_API_KEY,
     },

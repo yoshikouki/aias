@@ -1,15 +1,15 @@
-import type { Skill } from "../skills/types";
+import type { Skill, SkillContext, SkillResult } from "../skills/types";
 
 /**
  * エージェントの基本インターフェース
  */
 export interface Agent {
   readonly id: string;
-  readonly skills: ReadonlyMap<string, Skill<any, any>>;
-  
-  useSkill<T extends Skill<any, any>>(
+  readonly skills: ReadonlyMap<string, Skill<SkillContext, SkillResult>>;
+
+  useSkill<T extends Skill<SkillContext, SkillResult>>(
     skillType: string,
-    context: Parameters<T["use"]>[0]
+    context: Parameters<T["use"]>[0],
   ): Promise<ReturnType<T["use"]>>;
 }
 

@@ -1,6 +1,5 @@
 import { google } from "@ai-sdk/google";
-import { Agent, Mastra } from "@mastra/core";
-import { createLogger } from "@mastra/core/logger";
+import { Agent } from "@mastra/core";
 import type { MemorySkill } from "../memory/types";
 import type { ChatContext, ChatResult, ChatSkill, ChatSkillConfig } from "./types";
 
@@ -22,10 +21,6 @@ export class ChatSkillImpl implements ChatSkill {
 
   private async initAgent(): Promise<Agent> {
     if (!this.agent) {
-      const mastra = new Mastra({
-        logger: createLogger({ name: "aias-chat", level: "info" }),
-      });
-
       const agent = new Agent({
         name: "Chat Agent",
         model: google("gemini-2.0-flash"),
@@ -51,8 +46,8 @@ export class ChatSkillImpl implements ChatSkill {
 
       // Build prompt with conversation history
       let prompt = "";
-      if (memoryResult.success && memoryResult.memories) {
-        prompt = `${memoryResult.memories.map((memory) => memory.content).join("\n")}\n\n`;
+      if (memoryResult.success && memoryResult.data.messages) {
+        prompt = `${memoryResult.data.messages.map((message) => message.content).join("\n")}\n\n`;
       }
       prompt += context.message;
 

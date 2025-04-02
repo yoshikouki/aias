@@ -11,12 +11,8 @@ export * from "./features/tools/discord/types";
 
 async function main() {
   const logger = createLogger();
-  const discordTool = createDiscordTool({
-    type: "discord",
-    token: process.env.DISCORD_TOKEN || "",
-    logger,
-  });
 
+  // Initialize memory skill
   const memorySkill = createMemorySkill({
     type: "memory",
     lastMessages: 100,
@@ -29,6 +25,7 @@ async function main() {
     },
   });
 
+  // Initialize chat skill with memory
   const chatSkill = createChatSkill(
     {
       type: "chat",
@@ -39,25 +36,26 @@ async function main() {
     memorySkill,
   );
 
-  await discordTool.start();
-  logger.log("Discord tool started");
+  // Initialize Discord tool
+  const discordTool = createDiscordTool({
+    type: "discord",
+    token: process.env.DISCORD_TOKEN || "",
+    logger,
+  });
 
-  const message = "Hello, how can I help you today?";
-  const result = await chatSkill.use({
-    message,
+  // Connect chat skill to Discord tool and start
+  await discordTool.execute(chatSkill, {
+    message: "I'm now online and ready to help!",
     role: "assistant",
     timestamp: Date.now(),
     metadata: {
-      threadId: "test-thread",
-      userId: "test-resource",
+      threadId: process.env.DISCORD_CHANNEL_ID,
+      userId: "system",
     },
   });
 
-  if (result.success) {
-    logger.log(`Chat response: ${result.response}`);
-  } else {
-    logger.error(`Chat error: ${result.error}`);
-  }
+  await discordTool.start();
+  logger.log("Discord tool started and connected with chat skill");
 }
 
 main().catch((error) => {

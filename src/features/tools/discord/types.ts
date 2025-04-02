@@ -1,5 +1,5 @@
 import type { Client } from "discord.js";
-import type { Logger } from "../../../lib/logger";
+import type { Logger } from "../../common/logger";
 import type { ChatSkill } from "../../skills/chat/types";
 import type { Tool, ToolConfig } from "../types";
 

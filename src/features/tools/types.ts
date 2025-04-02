@@ -17,7 +17,7 @@ export interface Tool<S extends Skill<SkillContext, SkillResult>> {
  * ツールファクトリーのインターフェース
  */
 export interface ToolFactory {
-  create<T extends Tool<any>>(config: ToolConfig): Promise<T>;
+  create<T extends Tool<Skill<SkillContext, SkillResult>>>(config: ToolConfig): Promise<T>;
 }
 
 /**
